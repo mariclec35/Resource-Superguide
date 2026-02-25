@@ -1,0 +1,660 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { 
+  LayoutDashboard, FileText, AlertCircle, Plus, 
+  Settings, LogOut, Loader2, Search, Filter,
+  CheckCircle2, XCircle, Clock, MoreVertical,
+  Edit2, Trash2, ExternalLink
+} from 'lucide-react';
+import { Resource, Report, ReportStatus, ResourceStatus } from '../types';
+import { format } from 'date-fns';
+
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState<'resources' | 'reports'>('resources');
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate('/admin');
+    } else {
+      setUser(user);
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/admin');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-10 h-10 text-zinc-900 animate-spin mb-4" />
+        <p className="text-zinc-500">Verifying session...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div>
+          <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Admin Dashboard</h1>
+          <p className="text-zinc-500">Manage resources and triage community reports.</p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-bold text-zinc-900">{user?.email}</p>
+            <p className="text-xs text-zinc-400">Administrator</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-2.5 rounded-xl border border-zinc-200 text-zinc-500 hover:text-red-600 hover:bg-red-50 transition-all"
+            title="Sign Out"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex border-b border-zinc-200 mb-8">
+        <button
+          onClick={() => setActiveTab('resources')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'resources' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <LayoutDashboard className="w-4 h-4" />
+            Resources Manager
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('reports')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'reports' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            Reports Queue
+          </div>
+        </button>
+      </div>
+
+      {activeTab === 'resources' ? <ResourcesManager /> : <ReportsQueue />}
+    </div>
+  );
+}
+
+// --- Sub-components ---
+
+function ResourcesManager() {
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [editingResource, setEditingResource] = useState<Resource | null>(null);
+
+  useEffect(() => {
+    fetchResources();
+  }, []);
+
+  const fetchResources = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('resources')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (!error) setResources(data || []);
+    setLoading(false);
+  };
+
+  const filtered = resources.filter(r => 
+    r.name.toLowerCase().includes(search.toLowerCase()) ||
+    r.category.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this resource?')) {
+      const { error } = await supabase.from('resources').delete().eq('id', id);
+      if (!error) fetchResources();
+    }
+  };
+
+  const handleVerify = async (resource: Resource, notes: string, resetCount: boolean) => {
+    const { error } = await supabase
+      .from('resources')
+      .update({
+        status: 'active',
+        last_verified_date: new Date().toISOString().split('T')[0],
+        verification_notes: notes,
+        open_report_count: resetCount ? 0 : resource.open_report_count
+      })
+      .eq('id', resource.id);
+    
+    if (!error) fetchResources();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Search resources..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
+          />
+        </div>
+        <button
+          onClick={() => {
+            setEditingResource(null);
+            setShowForm(true);
+          }}
+          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          Add Resource
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
+        </div>
+      ) : (
+        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-zinc-50 border-b border-zinc-200">
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Name & Category</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Location</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Reports</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Last Verified</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {filtered.map((resource) => (
+                <tr key={resource.id} className="hover:bg-zinc-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="font-bold text-zinc-900">{resource.name}</p>
+                    <p className="text-xs text-zinc-500">{resource.category}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-zinc-600">{resource.city_direction}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={resource.status} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`text-sm font-bold ${resource.open_report_count > 0 ? 'text-red-600' : 'text-zinc-400'}`}>
+                      {resource.open_report_count}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-zinc-600">
+                      {resource.last_verified_date ? format(new Date(resource.last_verified_date), 'MMM d, yyyy') : 'Never'}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          const notes = prompt('Verification notes:');
+                          if (notes !== null) {
+                            const reset = confirm('Reset open report count to 0?');
+                            handleVerify(resource, notes, reset);
+                          }
+                        }}
+                        className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all"
+                        title="Mark Verified"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingResource(resource);
+                          setShowForm(true);
+                        }}
+                        className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-all"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(resource.id)}
+                        className="p-2 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showForm && (
+        <ResourceForm
+          resource={editingResource}
+          onClose={() => setShowForm(false)}
+          onSave={() => {
+            setShowForm(false);
+            fetchResources();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReportsQueue() {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<ReportStatus | 'all'>('all');
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*, resource:resources(*)')
+      .order('submitted_at', { ascending: false });
+    
+    if (!error) setReports(data || []);
+    setLoading(false);
+  };
+
+  const filtered = filter === 'all' ? reports : reports.filter(r => r.report_status === filter);
+
+  const updateReport = async (id: string, updates: Partial<Report>) => {
+    const { error } = await supabase
+      .from('reports')
+      .update(updates)
+      .eq('id', id);
+    
+    if (!error) fetchReports();
+  };
+
+  const resolveReport = async (report: Report, notes: string) => {
+    await updateReport(report.id, {
+      report_status: 'resolved',
+      resolution_notes: notes,
+      resolved_at: new Date().toISOString()
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-2 p-1 bg-zinc-100 rounded-xl w-fit">
+        {(['all', 'open', 'in_review', 'resolved', 'duplicate'] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all ${
+              filter === s 
+                ? 'bg-white text-zinc-900 shadow-sm' 
+                : 'text-zinc-500 hover:text-zinc-700'
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filtered.map((report) => (
+            <div key={report.id} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <ReportStatusBadge status={report.report_status} />
+                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                    {format(new Date(report.submitted_at), 'MMM d, yyyy HH:mm')}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  {report.report_status !== 'resolved' && (
+                    <button
+                      onClick={() => {
+                        const notes = prompt('Resolution notes:');
+                        if (notes !== null) resolveReport(report, notes);
+                      }}
+                      className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-100 transition-all"
+                    >
+                      Resolve
+                    </button>
+                  )}
+                  {report.report_status === 'open' && (
+                    <button
+                      onClick={() => updateReport(report.id, { report_status: 'in_review' })}
+                      className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg hover:bg-blue-100 transition-all"
+                    >
+                      In Review
+                    </button>
+                  )}
+                  <button
+                    onClick={() => updateReport(report.id, { report_status: 'duplicate' })}
+                    className="px-3 py-1.5 bg-zinc-50 text-zinc-600 text-xs font-bold rounded-lg hover:bg-zinc-100 transition-all"
+                  >
+                    Mark Duplicate
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">Issue Detail</h4>
+                  <p className="text-sm font-bold text-zinc-900 mb-1">{report.issue_type}</p>
+                  <p className="text-sm text-zinc-600 mb-4">{report.comment || 'No comment provided.'}</p>
+                  
+                  {report.optional_contact && (
+                    <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-100">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Contact Info</p>
+                      <p className="text-sm text-zinc-700">{report.optional_contact}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2 flex items-center justify-between">
+                    Linked Resource
+                    <a href={`/resource/${report.resource_id}`} target="_blank" className="text-emerald-600 hover:underline flex items-center gap-1">
+                      View <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </h4>
+                  {report.resource ? (
+                    <>
+                      <p className="text-sm font-bold text-zinc-900">{report.resource.name}</p>
+                      <p className="text-xs text-zinc-500 mb-2">{report.resource.address}</p>
+                      <StatusBadge status={report.resource.status} />
+                    </>
+                  ) : (
+                    <p className="text-sm text-zinc-400 italic">Resource not found</p>
+                  )}
+                </div>
+              </div>
+
+              {report.resolution_notes && (
+                <div className="mt-4 pt-4 border-t border-zinc-100">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resolution Notes</p>
+                  <p className="text-sm text-zinc-700">{report.resolution_notes}</p>
+                  {report.resolved_at && (
+                    <p className="text-[10px] text-zinc-400 mt-1">Resolved at: {format(new Date(report.resolved_at), 'MMM d, yyyy HH:mm')}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: ResourceStatus }) {
+  const configs = {
+    active: { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'Active' },
+    needs_verification: { bg: 'bg-amber-100', text: 'text-amber-800', label: 'Needs Verification' },
+    temporarily_closed: { bg: 'bg-red-100', text: 'text-red-800', label: 'Closed' }
+  };
+  const config = configs[status];
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${config.bg} ${config.text}`}>
+      {config.label}
+    </span>
+  );
+}
+
+function ReportStatusBadge({ status }: { status: ReportStatus }) {
+  const configs = {
+    open: { bg: 'bg-red-100', text: 'text-red-800', label: 'Open' },
+    in_review: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'In Review' },
+    resolved: { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'Resolved' },
+    duplicate: { bg: 'bg-zinc-100', text: 'text-zinc-800', label: 'Duplicate' }
+  };
+  const config = configs[status];
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${config.bg} ${config.text}`}>
+      {config.label}
+    </span>
+  );
+}
+
+function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null, onClose: () => void, onSave: () => void }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    
+    const data = {
+      name: formData.get('name'),
+      category: formData.get('category'),
+      city_direction: formData.get('city_direction'),
+      recovery_stage: formData.getAll('recovery_stage'),
+      transit_accessibility: formData.get('transit_accessibility'),
+      walkability: formData.get('walkability'),
+      access_indicators: formData.getAll('access_indicators'),
+      snap_accepted: formData.get('snap_accepted'),
+      cost: formData.get('cost'),
+      address: formData.get('address'),
+      phone: formData.get('phone'),
+      website: formData.get('website'),
+      hours: formData.get('hours'),
+      description: formData.get('description'),
+      best_for: formData.get('best_for'),
+      status: formData.get('status'),
+    };
+
+    try {
+      if (resource) {
+        const { error } = await supabase.from('resources').update(data).eq('id', resource.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('resources').insert(data);
+        if (error) throw error;
+      }
+      onSave();
+    } catch (err) {
+      console.error('Error saving resource:', err);
+      alert('Error saving resource');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
+          <h2 className="text-2xl font-black text-zinc-900 tracking-tight">
+            {resource ? 'Edit Resource' : 'Add New Resource'}
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-all">
+            <XCircle className="w-6 h-6 text-zinc-400" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Basic Info</h3>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Resource Name</label>
+                <input name="name" defaultValue={resource?.name} required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Category</label>
+                <select name="category" defaultValue={resource?.category} required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
+                  {['Housing', 'Food Shelf', 'Mental Health', 'Chemical Dependency', 'Employment', 'Legal', 'Medical', 'Crisis', 'Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">City + Direction</label>
+                <input name="city_direction" defaultValue={resource?.city_direction} placeholder="e.g. Saint Paul - East" required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Status</label>
+                <select name="status" defaultValue={resource?.status} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
+                  <option value="active">Active</option>
+                  <option value="needs_verification">Needs Verification</option>
+                  <option value="temporarily_closed">Temporarily Closed</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Access & Transit</h3>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Transit Accessibility</label>
+                <select name="transit_accessibility" defaultValue={resource?.transit_accessibility} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
+                  <option value="On Major Bus Line">On Major Bus Line</option>
+                  <option value="Near Light Rail (Green Line / Blue Line)">Near Light Rail</option>
+                  <option value="Multiple Transit Options">Multiple Transit Options</option>
+                  <option value="Limited Transit Access">Limited Transit Access</option>
+                  <option value="Car Recommended">Car Recommended</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Walkability</label>
+                <select name="walkability" defaultValue={resource?.walkability} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
+                  <option value="Walkable ≤ 15 minutes">Walkable ≤ 15 minutes</option>
+                  <option value="Walkable 16–30 minutes">Walkable 16–30 minutes</option>
+                  <option value="Unknown">Unknown</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">SNAP Accepted</label>
+                <select name="snap_accepted" defaultValue={resource?.snap_accepted} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                  <option value="N/A">N/A</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Cost</label>
+                <select name="cost" defaultValue={resource?.cost} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
+                  <option value="Free">Free</option>
+                  <option value="Sliding scale">Sliding scale</option>
+                  <option value="Insurance">Insurance</option>
+                  <option value="Fee">Fee</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Multi-select Options</h3>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-2">Recovery Stages</label>
+                <div className="flex flex-wrap gap-2">
+                  {['crisis', 'stabilizing', 'growth'].map(s => (
+                    <label key={s} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200 text-sm cursor-pointer hover:bg-zinc-50">
+                      <input type="checkbox" name="recovery_stage" value={s} defaultChecked={resource?.recovery_stage.includes(s as any)} className="rounded text-zinc-900" />
+                      <span className="capitalize">{s}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-2">Access Indicators</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Walk-in friendly', 'Application required', 'Waitlist likely', 'Referral required', 'ID required', 'Insurance required'].map(i => (
+                    <label key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200 text-xs cursor-pointer hover:bg-zinc-50">
+                      <input type="checkbox" name="access_indicators" value={i} defaultChecked={resource?.access_indicators.includes(i)} className="rounded text-zinc-900" />
+                      <span>{i}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Contact Details</h3>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Address</label>
+                <input name="address" defaultValue={resource?.address} required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Phone</label>
+                <input name="phone" defaultValue={resource?.phone || ''} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Website</label>
+                <input name="website" defaultValue={resource?.website || ''} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1">Hours</label>
+                <textarea name="hours" defaultValue={resource?.hours || ''} rows={2} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Descriptions</h3>
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 mb-1">Description</label>
+              <textarea name="description" defaultValue={resource?.description || ''} rows={4} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 mb-1">Best For (Short summary)</label>
+              <input name="best_for" defaultValue={resource?.best_for || ''} placeholder="e.g. Quick walk-in food support" className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+            </div>
+          </div>
+        </form>
+
+        <div className="p-6 border-t border-zinc-100 flex justify-end gap-3 bg-zinc-50">
+          <button onClick={onClose} className="px-6 py-2.5 rounded-xl font-bold text-zinc-500 hover:bg-white transition-all">Cancel</button>
+          <button
+            type="submit"
+            form="resource-form"
+            disabled={loading}
+            className="px-8 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all disabled:opacity-50 flex items-center gap-2"
+            onClick={() => {
+              const form = document.getElementById('resource-form') as HTMLFormElement;
+              if (form) form.requestSubmit();
+            }}
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {resource ? 'Update Resource' : 'Create Resource'}
+          </button>
+          <form id="resource-form" onSubmit={handleSubmit} className="hidden" />
+        </div>
+      </div>
+    </div>
+  );
+}
