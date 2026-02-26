@@ -1,11 +1,13 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import ResourceDetail from './pages/ResourceDetail';
 import MyGuide from './pages/MyGuide';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 export default function App() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
             <Route path="/my-guide" element={<MyGuide />} />
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
           </Routes>
         </main>
         
@@ -34,8 +38,8 @@ export default function App() {
               &copy; {new Date().getFullYear()} SuperGuide. Supporting Saint Paul & Minneapolis communities.
             </p>
             <div className="flex gap-6">
-              <a href="#" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Privacy</a>
-              <a href="#" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Terms</a>
+              <Link to="/privacy" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Privacy</Link>
+              <Link to="/terms" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Terms</Link>
               <a href="#" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Contact</a>
             </div>
           </div>
