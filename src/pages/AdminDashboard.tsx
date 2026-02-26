@@ -674,9 +674,9 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
         if (error) throw error;
       }
       onSave();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving resource:', err);
-      alert('Error saving resource');
+      alert('Error saving resource: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -694,7 +694,7 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1 space-y-8">
+        <form id="resource-form" onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Basic Info</h3>
@@ -831,15 +831,10 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
             form="resource-form"
             disabled={loading}
             className="px-8 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all disabled:opacity-50 flex items-center gap-2"
-            onClick={() => {
-              const form = document.getElementById('resource-form') as HTMLFormElement;
-              if (form) form.requestSubmit();
-            }}
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {resource ? 'Update Resource' : 'Create Resource'}
           </button>
-          <form id="resource-form" onSubmit={handleSubmit} className="hidden" />
         </div>
       </div>
     </div>
