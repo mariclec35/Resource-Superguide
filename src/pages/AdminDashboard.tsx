@@ -6,14 +6,14 @@ import {
   Settings, LogOut, Loader2, Search, Filter,
   CheckCircle2, XCircle, Clock, MoreVertical,
   Edit2, Trash2, ExternalLink, ShieldAlert, Terminal,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Users
 } from 'lucide-react';
 import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
 import { logger } from '../lib/logger';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories' | 'errors'>('resources');
+  const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories' | 'errors' | 'users'>('categories');
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
@@ -74,6 +74,19 @@ export default function AdminDashboard() {
 
       <div className="flex border-b border-zinc-200 mb-8">
         <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'categories' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Categories Manager
+          </div>
+        </button>
+        <button
           onClick={() => setActiveTab('resources')}
           className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
             activeTab === 'resources' 
@@ -100,19 +113,6 @@ export default function AdminDashboard() {
           </div>
         </button>
         <button
-          onClick={() => setActiveTab('categories')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
-            activeTab === 'categories' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Categories Manager
-          </div>
-        </button>
-        <button
           onClick={() => setActiveTab('errors')}
           className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
             activeTab === 'errors' 
@@ -125,12 +125,26 @@ export default function AdminDashboard() {
             Error Logs
           </div>
         </button>
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'users' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Admin Users
+          </div>
+        </button>
       </div>
 
       {activeTab === 'resources' && <ResourcesManager />}
       {activeTab === 'reports' && <ReportsQueue />}
       {activeTab === 'categories' && <CategoriesManager />}
       {activeTab === 'errors' && <ErrorLogsManager />}
+      {activeTab === 'users' && <UsersManager />}
     </div>
   );
 }
@@ -925,6 +939,207 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function UsersManager() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addingUser, setAddingUser] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/admin/users');
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
+      setUsers(data);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail || !newPassword) return;
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newEmail, password: newPassword }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to add user');
+      }
+      setNewEmail('');
+      setNewPassword('');
+      setAddingUser(false);
+      fetchUsers();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleDeleteUser = async (id: string, email: string) => {
+    if (!confirm(`Are you sure you want to delete admin user ${email}?`)) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete user');
+      fetchUsers();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleResetPassword = async (id: string, email: string) => {
+    if (!confirm(`Send password reset link to ${email}?`)) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${id}/reset-password`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Failed to send reset link');
+      alert('Password reset link generated. Check server logs or email if configured.');
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Active Admin Users</h2>
+          <p className="text-sm text-zinc-500">Manage administrative access to the platform.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setAddingUser(!addingUser)}
+            className="px-4 py-2 bg-zinc-900 text-white text-sm font-bold rounded-xl hover:bg-zinc-800 transition-all flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add User
+          </button>
+          <button 
+            onClick={fetchUsers}
+            className="p-2 hover:bg-zinc-100 rounded-lg transition-all"
+            title="Refresh Users"
+          >
+            <Clock className="w-4 h-4 text-zinc-400" />
+          </button>
+        </div>
+      </div>
+
+      {addingUser && (
+        <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
+          <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 mb-1">Email</label>
+              <input 
+                type="email" 
+                required 
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="w-full p-2 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
+                placeholder="admin@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 mb-1">Password</label>
+              <input 
+                type="password" 
+                required 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full p-2 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
+                placeholder="Min 6 characters"
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <button type="submit" className="flex-1 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-all">
+                Create User
+              </button>
+              <button type="button" onClick={() => setAddingUser(false)} className="px-4 py-2 bg-zinc-100 text-zinc-500 font-bold rounded-lg hover:bg-zinc-200 transition-all">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
+        </div>
+      ) : (
+        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-zinc-50 border-b border-zinc-200">
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Email</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">User ID</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Created At</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Last Sign In</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {users.map((u) => (
+                <tr key={u.id} className="hover:bg-zinc-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-bold text-zinc-900">{u.email}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-mono text-zinc-400">{u.id}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-zinc-500">
+                      {u.created_at ? format(new Date(u.created_at), 'MMM d, yyyy') : '—'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-zinc-500">
+                      {u.last_sign_in_at ? format(new Date(u.last_sign_in_at), 'MMM d, yyyy HH:mm') : 'Never'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => handleResetPassword(u.id, u.email)}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+                        title="Reset Password"
+                      >
+                        <Clock className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteUser(u.id, u.email)}
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                        title="Delete User"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

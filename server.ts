@@ -55,6 +55,81 @@ app.post("/api/log-error", async (req, res) => {
   }
 });
 
+// API: List Admin Users
+app.get("/api/admin/users", async (req, res) => {
+  try {
+    const { data: { users }, error } = await supabase.auth.admin.listUsers();
+    if (error) throw error;
+    
+    // Return only necessary info
+    const sanitizedUsers = users.map(u => ({
+      id: u.id,
+      email: u.email,
+      last_sign_in_at: u.last_sign_in_at,
+      created_at: u.created_at
+    }));
+    
+    res.status(200).json(sanitizedUsers);
+  } catch (err: any) {
+    console.error("Failed to list users:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// API: Create Admin User
+app.post("/api/admin/users", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  try {
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true
+    });
+    if (error) throw error;
+    res.status(201).json(data.user);
+  } catch (err: any) {
+    console.error("Failed to create user:", err);
+    res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+// API: Delete Admin User
+app.delete("/api/admin/users/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabase.auth.admin.deleteUser(id);
+    if (error) throw error;
+    res.status(200).json({ status: "ok" });
+  } catch (err: any) {
+    console.error("Failed to delete user:", err);
+    res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+// API: Reset Password (Send Email)
+app.post("/api/admin/users/:id/reset-password", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Get user email first
+    const { data: { user }, error: getError } = await supabase.auth.admin.getUserById(id);
+    if (getError || !user || !user.email) throw getError || new Error("User not found");
+
+    const { error } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: user.email,
+    });
+    if (error) throw error;
+    res.status(200).json({ status: "ok", message: "Reset link generated (check server logs or email if configured)" });
+  } catch (err: any) {
+    console.error("Failed to reset password:", err);
+    res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
 // Middleware for automatic API error logging
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("API Error:", err);
