@@ -5,13 +5,14 @@ import {
   LayoutDashboard, FileText, AlertCircle, Plus, 
   Settings, LogOut, Loader2, Search, Filter,
   CheckCircle2, XCircle, Clock, MoreVertical,
-  Edit2, Trash2, ExternalLink
+  Edit2, Trash2, ExternalLink, ShieldAlert, Terminal,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
-import { Resource, Report, ReportStatus, ResourceStatus, Category } from '../types';
+import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories'>('resources');
+  const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories' | 'errors'>('resources');
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
@@ -48,7 +49,10 @@ export default function AdminDashboard() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Admin Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Admin Dashboard</h1>
+            <span className="px-2 py-0.5 bg-zinc-100 text-zinc-400 text-[10px] font-bold rounded uppercase tracking-widest">v1.2</span>
+          </div>
           <p className="text-zinc-500">Manage resources and triage community reports.</p>
         </div>
         
@@ -107,11 +111,25 @@ export default function AdminDashboard() {
             Categories Manager
           </div>
         </button>
+        <button
+          onClick={() => setActiveTab('errors')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'errors' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4" />
+            Error Logs
+          </div>
+        </button>
       </div>
 
       {activeTab === 'resources' && <ResourcesManager />}
       {activeTab === 'reports' && <ReportsQueue />}
       {activeTab === 'categories' && <CategoriesManager />}
+      {activeTab === 'errors' && <ErrorLogsManager />}
     </div>
   );
 }
@@ -647,23 +665,25 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
     const formData = new FormData(e.currentTarget);
     
     const data = {
-      name: formData.get('name'),
-      category: formData.get('category'),
-      city_direction: formData.get('city_direction'),
-      recovery_stage: formData.getAll('recovery_stage'),
-      transit_accessibility: formData.get('transit_accessibility'),
-      walkability: formData.get('walkability'),
-      access_indicators: formData.getAll('access_indicators'),
-      snap_accepted: formData.get('snap_accepted'),
-      cost: formData.get('cost'),
-      address: formData.get('address'),
-      phone: formData.get('phone'),
-      website: formData.get('website'),
-      hours: formData.get('hours'),
-      description: formData.get('description'),
-      best_for: formData.get('best_for'),
-      status: formData.get('status'),
+      name: formData.get('name') as string,
+      category: formData.get('category') as string,
+      city_direction: formData.get('city_direction') as string,
+      recovery_stage: formData.getAll('recovery_stage') as string[],
+      transit_accessibility: formData.get('transit_accessibility') as string,
+      walkability: formData.get('walkability') as string,
+      access_indicators: formData.getAll('access_indicators') as string[],
+      snap_accepted: formData.get('snap_accepted') as string,
+      cost: formData.get('cost') as string,
+      address: formData.get('address') as string,
+      phone: (formData.get('phone') as string) || null,
+      website: (formData.get('website') as string) || null,
+      hours: (formData.get('hours') as string) || null,
+      description: (formData.get('description') as string) || null,
+      best_for: (formData.get('best_for') as string) || null,
+      status: (formData.get('status') as string) || 'active',
     };
+
+    console.log('Attempting to save resource:', data);
 
     try {
       if (resource) {
@@ -837,6 +857,230 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ErrorLogsManager() {
+  const [logs, setLogs] = useState<ErrorEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<{
+    severity: string;
+    source: string;
+    resolved: string;
+  }>({
+    severity: 'all',
+    source: 'all',
+    resolved: 'all',
+  });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [filter]);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    let query = supabase
+      .from('error_events')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (filter.severity !== 'all') query = query.eq('severity', filter.severity);
+    if (filter.source !== 'all') query = query.eq('source', filter.source);
+    if (filter.resolved !== 'all') query = query.eq('resolved', filter.resolved === 'true');
+
+    const { data, error } = await query.limit(100);
+    
+    if (!error) setLogs(data || []);
+    setLoading(false);
+  };
+
+  const toggleResolve = async (log: ErrorEvent) => {
+    const { error } = await supabase
+      .from('error_events')
+      .update({ 
+        resolved: !log.resolved,
+        resolved_at: !log.resolved ? new Date().toISOString() : null,
+      })
+      .eq('id', log.id);
+    
+    if (!error) fetchLogs();
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
+      case 'error': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'warning': return 'bg-amber-100 text-amber-800 border-amber-200';
+      default: return 'bg-blue-100 text-blue-800 border-blue-200';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-4 items-center bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-zinc-400" />
+          <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Filters:</span>
+        </div>
+        
+        <select 
+          value={filter.severity}
+          onChange={(e) => setFilter({ ...filter, severity: e.target.value })}
+          className="text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
+        >
+          <option value="all">All Severities</option>
+          <option value="critical">Critical</option>
+          <option value="error">Error</option>
+          <option value="warning">Warning</option>
+          <option value="info">Info</option>
+        </select>
+
+        <select 
+          value={filter.source}
+          onChange={(e) => setFilter({ ...filter, source: e.target.value })}
+          className="text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
+        >
+          <option value="all">All Sources</option>
+          <option value="client">Client</option>
+          <option value="api">API</option>
+          <option value="job">Job</option>
+        </select>
+
+        <select 
+          value={filter.resolved}
+          onChange={(e) => setFilter({ ...filter, resolved: e.target.value })}
+          className="text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
+        >
+          <option value="all">All Status</option>
+          <option value="false">Unresolved</option>
+          <option value="true">Resolved</option>
+        </select>
+
+        <button 
+          onClick={fetchLogs}
+          className="ml-auto p-2 hover:bg-zinc-100 rounded-lg transition-all"
+          title="Refresh Logs"
+        >
+          <Clock className="w-4 h-4 text-zinc-400" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
+        </div>
+      ) : (
+        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-zinc-50 border-b border-zinc-200">
+                <th className="w-10 px-6 py-4"></th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Severity & Source</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Message</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Timestamp</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {logs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-20 text-center text-zinc-400 italic">No error logs found matching filters.</td>
+                </tr>
+              ) : logs.map((log) => (
+                <React.Fragment key={log.id}>
+                  <tr 
+                    className={`hover:bg-zinc-50/50 transition-colors cursor-pointer ${expandedId === log.id ? 'bg-zinc-50/50' : ''}`}
+                    onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                  >
+                    <td className="px-6 py-4">
+                      {expandedId === log.id ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${getSeverityColor(log.severity)}`}>
+                          {log.severity}
+                        </span>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1">
+                          <Terminal className="w-3 h-3" /> {log.source}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-bold text-zinc-900 line-clamp-1">{log.message}</p>
+                      {log.route && <p className="text-[10px] text-zinc-400 font-mono">{log.route}</p>}
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-xs text-zinc-500">
+                        {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleResolve(log);
+                        }}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                          log.resolved 
+                            ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' 
+                            : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                        }`}
+                      >
+                        {log.resolved ? 'Resolved' : 'Mark Resolved'}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedId === log.id && (
+                    <tr className="bg-zinc-50/30">
+                      <td colSpan={5} className="px-12 py-6 border-t border-zinc-100">
+                        <div className="space-y-6">
+                          {log.stack && (
+                            <div>
+                              <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Stack Trace</h4>
+                              <pre className="bg-zinc-900 text-zinc-300 p-4 rounded-xl text-xs font-mono overflow-x-auto max-h-60">
+                                {log.stack}
+                              </pre>
+                            </div>
+                          )}
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Metadata</h4>
+                              <pre className="bg-white border border-zinc-200 p-4 rounded-xl text-xs font-mono overflow-x-auto">
+                                {JSON.stringify(log.metadata, null, 2)}
+                              </pre>
+                            </div>
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Context</h4>
+                                <div className="space-y-1">
+                                  <p className="text-xs text-zinc-600"><span className="font-bold">Endpoint:</span> {log.endpoint || 'N/A'}</p>
+                                  <p className="text-xs text-zinc-600"><span className="font-bold">Session ID:</span> {log.session_id || 'N/A'}</p>
+                                  <p className="text-xs text-zinc-600"><span className="font-bold">User ID:</span> {log.user_id || 'Anonymous'}</p>
+                                </div>
+                              </div>
+                              {log.resolved && (
+                                <div>
+                                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resolution</h4>
+                                  <p className="text-xs text-zinc-600">
+                                    Resolved at {format(new Date(log.resolved_at!), 'MMM d, yyyy HH:mm')}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

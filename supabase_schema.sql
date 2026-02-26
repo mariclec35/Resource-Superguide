@@ -93,3 +93,42 @@ INSERT INTO categories (name) VALUES
   ('Housing'), ('Food Shelf'), ('Mental Health'), ('Chemical Dependency'), 
   ('Employment'), ('Legal'), ('Medical'), ('Crisis'), ('Other')
 ON CONFLICT (name) DO NOTHING;
+
+-- 8. Create error_events table for structured logging
+CREATE TYPE error_source AS ENUM ('client', 'api', 'job');
+CREATE TYPE error_severity AS ENUM ('info', 'warning', 'error', 'critical');
+
+CREATE TABLE error_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  source error_source NOT NULL,
+  severity error_severity NOT NULL,
+  message TEXT NOT NULL,
+  stack TEXT,
+  route TEXT,
+  endpoint TEXT,
+  user_id UUID,
+  session_id TEXT,
+  metadata JSONB,
+  resolved BOOLEAN DEFAULT false,
+  resolved_at TIMESTAMPTZ,
+  resolved_by UUID
+);
+
+-- Enable RLS
+ALTER TABLE error_events ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+-- Public can only insert (for client-side logging)
+CREATE POLICY "Public can log errors" ON error_events
+  FOR INSERT WITH CHECK (true);
+
+-- Admins can view and update
+CREATE POLICY "Admins have full access to error logs" ON error_events
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Indexes for performance
+CREATE INDEX idx_error_events_created_at ON error_events(created_at DESC);
+CREATE INDEX idx_error_events_severity ON error_events(severity);
+CREATE INDEX idx_error_events_source ON error_events(source);
+CREATE INDEX idx_error_events_resolved ON error_events(resolved);

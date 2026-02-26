@@ -59,3 +59,20 @@ export interface Report {
   admin_user: string | null;
   resource?: Resource;
 }
+
+export interface ErrorEvent {
+  id: string;
+  created_at: string;
+  source: 'client' | 'api' | 'job';
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  message: string;
+  stack: string | null;
+  route: string | null;
+  endpoint: string | null;
+  user_id: string | null;
+  session_id: string | null;
+  metadata: any;
+  resolved: boolean;
+  resolved_at: string | null;
+  resolved_by: string | null;
+}
