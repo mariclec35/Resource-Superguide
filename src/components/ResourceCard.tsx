@@ -85,10 +85,10 @@ export default function ResourceCard({ resource, inGuide, onToggleGuide }: Resou
             {inGuide ? (
               <>
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                In Guide
+                In List
               </>
             ) : (
-              "+ Add to Guide"
+              "+ Add to List"
             )}
           </button>
         )}

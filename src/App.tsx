@@ -28,10 +28,10 @@ export default function App() {
               <div className="bg-zinc-900 p-1 rounded">
                 <div className="w-4 h-4 bg-white rounded-sm"></div>
               </div>
-              <span className="font-bold tracking-tight">Resource Superguide</span>
+              <span className="font-bold tracking-tight">SuperGuide</span>
             </div>
             <p className="text-zinc-400 text-sm">
-              &copy; {new Date().getFullYear()} Resource Superguide. Supporting Saint Paul & Minneapolis communities.
+              &copy; {new Date().getFullYear()} SuperGuide. Supporting Saint Paul & Minneapolis communities.
             </p>
             <div className="flex gap-6">
               <a href="#" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Privacy</a>

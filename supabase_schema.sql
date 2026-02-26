@@ -1,4 +1,4 @@
--- SQL Migration for Resource Superguide
+-- SQL Migration for SuperGuide
 
 -- 1. Create resources table
 CREATE TABLE resources (
@@ -28,7 +28,14 @@ CREATE TABLE resources (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Create reports table
+-- 2. Create categories table
+CREATE TABLE categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Create reports table
 CREATE TABLE reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   resource_id UUID REFERENCES resources(id) ON DELETE CASCADE,
@@ -44,9 +51,19 @@ CREATE TABLE reports (
 
 -- 3. Enable RLS
 ALTER TABLE resources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 
--- 4. RLS Policies for resources
+-- 4. RLS Policies for categories
+-- Public can read categories
+CREATE POLICY "Public can view categories" ON categories
+  FOR SELECT USING (true);
+
+-- Admins can do everything
+CREATE POLICY "Admins have full access to categories" ON categories
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 5. RLS Policies for resources
 -- Public can read active or needs_verification resources (not temporarily_closed)
 CREATE POLICY "Public can view non-closed resources" ON resources
   FOR SELECT USING (status != 'temporarily_closed');
@@ -70,3 +87,9 @@ CREATE INDEX idx_resources_status ON resources(status);
 CREATE INDEX idx_resources_category ON resources(category);
 CREATE INDEX idx_reports_status ON reports(report_status);
 CREATE INDEX idx_reports_resource_id ON reports(resource_id);
+
+-- 7. Seed initial categories
+INSERT INTO categories (name) VALUES 
+  ('Housing'), ('Food Shelf'), ('Mental Health'), ('Chemical Dependency'), 
+  ('Employment'), ('Legal'), ('Medical'), ('Crisis'), ('Other')
+ON CONFLICT (name) DO NOTHING;

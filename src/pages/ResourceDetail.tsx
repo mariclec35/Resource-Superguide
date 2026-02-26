@@ -166,7 +166,7 @@ export default function ResourceDetail() {
                 }`}
               >
                 {inGuide ? <CheckCircle2 className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
-                {inGuide ? 'In My Guide' : 'Add to My Guide'}
+                {inGuide ? 'In My List' : 'Add to My List'}
               </button>
               <a
                 href={googleMapsUrl}

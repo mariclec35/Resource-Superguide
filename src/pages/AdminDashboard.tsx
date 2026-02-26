@@ -7,11 +7,11 @@ import {
   CheckCircle2, XCircle, Clock, MoreVertical,
   Edit2, Trash2, ExternalLink
 } from 'lucide-react';
-import { Resource, Report, ReportStatus, ResourceStatus } from '../types';
+import { Resource, Report, ReportStatus, ResourceStatus, Category } from '../types';
 import { format } from 'date-fns';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'resources' | 'reports'>('resources');
+  const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories'>('resources');
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
@@ -94,9 +94,24 @@ export default function AdminDashboard() {
             Reports Queue
           </div>
         </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'categories' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Categories Manager
+          </div>
+        </button>
       </div>
 
-      {activeTab === 'resources' ? <ResourcesManager /> : <ReportsQueue />}
+      {activeTab === 'resources' && <ResourcesManager />}
+      {activeTab === 'reports' && <ReportsQueue />}
+      {activeTab === 'categories' && <CategoriesManager />}
     </div>
   );
 }
@@ -422,6 +437,168 @@ function ReportsQueue() {
   );
 }
 
+function CategoriesManager() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+    
+    if (!error) setCategories(data || []);
+    setLoading(false);
+  };
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    
+    const { error } = await supabase
+      .from('categories')
+      .insert({ name: newName.trim() });
+    
+    if (!error) {
+      setNewName('');
+      fetchCategories();
+    } else {
+      alert('Error adding category: ' + error.message);
+    }
+  };
+
+  const handleUpdate = async (id: string) => {
+    if (!editName.trim()) return;
+    
+    const { error } = await supabase
+      .from('categories')
+      .update({ name: editName.trim() })
+      .eq('id', id);
+    
+    if (!error) {
+      setEditingId(null);
+      fetchCategories();
+    } else {
+      alert('Error updating category: ' + error.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure? This will not remove the category from existing resources, but it will disappear from filters.')) {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+      
+      if (!error) fetchCategories();
+      else alert('Error deleting category: ' + error.message);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <form onSubmit={handleAdd} className="flex gap-3">
+        <input
+          type="text"
+          placeholder="New category name..."
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
+        />
+        <button
+          type="submit"
+          className="px-6 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add
+        </button>
+      </form>
+
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
+        </div>
+      ) : (
+        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-zinc-50 border-b border-zinc-200">
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Category Name</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {categories.map((cat) => (
+                <tr key={cat.id} className="hover:bg-zinc-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    {editingId === cat.id ? (
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full px-2 py-1 rounded border border-zinc-200 outline-none focus:ring-1 focus:ring-zinc-900 text-sm"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-zinc-900">{cat.name}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {editingId === cat.id ? (
+                        <>
+                          <button
+                            onClick={() => handleUpdate(cat.id)}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingId(cat.id);
+                              setEditName(cat.name);
+                            }}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(cat.id)}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: ResourceStatus }) {
   const configs = {
     active: { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'Active' },
@@ -453,6 +630,16 @@ function ReportStatusBadge({ status }: { status: ReportStatus }) {
 
 function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null, onClose: () => void, onSave: () => void }) {
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*').order('name');
+    if (data) setCategories(data);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -518,7 +705,7 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
               <div>
                 <label className="block text-xs font-bold text-zinc-500 mb-1">Category</label>
                 <select name="category" defaultValue={resource?.category} required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
-                  {['Housing', 'Food Shelf', 'Mental Health', 'Chemical Dependency', 'Employment', 'Legal', 'Medical', 'Crisis', 'Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
               <div>

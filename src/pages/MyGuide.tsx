@@ -70,7 +70,7 @@ export default function MyGuide() {
     const doc = new jsPDF();
     
     doc.setFontSize(20);
-    doc.text('My Resource Guide', 14, 22);
+    doc.text('My Resource List', 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
@@ -125,7 +125,7 @@ export default function MyGuide() {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mb-4" />
-        <p className="text-zinc-500 font-medium">Loading your guide...</p>
+        <p className="text-zinc-500 font-medium">Loading your list...</p>
       </div>
     );
   }
@@ -134,7 +134,7 @@ export default function MyGuide() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
-          <h1 className="text-4xl font-black text-zinc-900 mb-2 tracking-tight">My Guide</h1>
+          <h1 className="text-4xl font-black text-zinc-900 mb-2 tracking-tight">My Resource List</h1>
           <p className="text-zinc-600">Your personalized list of resources for easy access and printing.</p>
         </div>
 
@@ -170,9 +170,9 @@ export default function MyGuide() {
           <div className="bg-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
             <BookOpen className="w-8 h-8 text-zinc-300" />
           </div>
-          <h2 className="text-xl font-bold text-zinc-900 mb-2">Your guide is empty</h2>
+          <h2 className="text-xl font-bold text-zinc-900 mb-2">Your list is empty</h2>
           <p className="text-zinc-500 mb-8 max-w-sm mx-auto">
-            Add resources to your guide while browsing to keep them all in one place.
+            Add resources to your list while browsing to keep them all in one place.
           </p>
           <a
             href="/"
@@ -215,7 +215,7 @@ export default function MyGuide() {
       )}
 
       <div className="mt-16 p-8 bg-emerald-50 rounded-3xl border border-emerald-100 print:hidden">
-        <h3 className="text-lg font-bold text-emerald-900 mb-2">Need help with your guide?</h3>
+        <h3 className="text-lg font-bold text-emerald-900 mb-2">Need help with your list?</h3>
         <p className="text-emerald-700 text-sm leading-relaxed max-w-2xl">
           You can print this page or download it as a PDF to take with you. 
           The PDF includes full addresses, phone numbers, and transit information 

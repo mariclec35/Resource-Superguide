@@ -14,6 +14,12 @@ export type Walkability =
 
 export type ResourceStatus = 'active' | 'needs_verification' | 'temporarily_closed';
 
+export interface Category {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Resource {
   id: string;
   name: string;

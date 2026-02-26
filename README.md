@@ -1,83 +1,20 @@
-# Resource Project
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-A structured recovery resource management system designed to improve clarity, accessibility, and organization within outpatient treatment programs and recovery communities.
+# Run and deploy your AI Studio app
 
----
+This contains everything you need to run your app locally.
 
-## Overview
+View your app in AI Studio: https://ai.studio/apps/06eec94f-df9d-4c60-9fb0-a53619fbf3e5
 
-Resource Project standardizes how recovery resources are organized, maintained, and accessed.
+## Run Locally
 
-It provides:
+**Prerequisites:**  Node.js
 
-- A curated database of vetted recovery resources  
-- Structured categorization and filtering  
-- Administrative management capabilities  
-- Search functionality  
-- A scalable system architecture  
 
-The current focus is building a reliable Core Resource Guide.
-
----
-
-## Problem
-
-Many outpatient programs rely on:
-
-- Static PDF lists  
-- Inconsistent formatting  
-- Manual updates  
-- Limited administrative control  
-
-This creates friction, inconsistency, and difficulty maintaining accurate information.
-
-Resource Project introduces structured data management and centralized oversight to improve reliability and clarity.
-
----
-
-## Current Scope (Phase 1)
-
-- Supabase (PostgreSQL) resource database  
-- Category and subcategory schema  
-- Search and filtering interface  
-- Administrative management tools  
-- Frontend built with React + Vite  
-- Hosted via Vercel  
-
----
-
-## Architecture
-
-**Frontend**
-- React  
-- Vite  
-
-**Backend**
-- Supabase (PostgreSQL)  
-- Role-based security policies  
-
-**Core Data Entities**
-- Resources  
-- Categories  
-- Subcategories  
-- Status (active / inactive)  
-- Administrative metadata  
-
----
-
-## Status
-
-- Database schema implemented  
-- Initial resource entries seeded  
-- UI iteration in progress  
-- Category refinement ongoing  
-
-This repository will continue evolving as the system matures.
-
----
-
-## Author
-
-Chris Maricle  
-GitHub: mariclec35  
-St. Paul, MN
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`

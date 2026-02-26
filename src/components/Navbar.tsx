@@ -9,7 +9,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: 'Find Resources', href: '/', icon: MapPin },
-    { name: 'My Guide', href: '/my-guide', icon: BookOpen },
+    { name: 'My Resource List', href: '/my-guide', icon: BookOpen },
     { name: 'Admin', href: '/admin', icon: ShieldCheck },
   ];
 
@@ -23,7 +23,7 @@ export default function Navbar() {
                 <MapPin className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-bold tracking-tight text-zinc-900 hidden sm:block">
-                Resource Superguide
+                SuperGuide
               </span>
             </Link>
           </div>

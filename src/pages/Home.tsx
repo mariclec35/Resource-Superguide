@@ -1,20 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Resource, RecoveryStage, TransitAccessibility, Walkability } from '../types';
+import { Resource, RecoveryStage, TransitAccessibility, Walkability, Category } from '../types';
 import ResourceCard from '../components/ResourceCard';
 import { Search, Filter, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-
-const CATEGORIES = [
-  'Housing', 'Food Shelf', 'Mental Health', 'Chemical Dependency', 
-  'Employment', 'Legal', 'Medical', 'Crisis', 'Other'
-];
 
 const CITIES = ['Saint Paul', 'Minneapolis'];
 const DIRECTIONS = ['North', 'South', 'East', 'West', 'Central', 'Northeast', 'Northwest', 'Southeast', 'Southwest'];
 
 export default function Home() {
   const [resources, setResources] = useState<Resource[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
@@ -31,25 +27,33 @@ export default function Home() {
   const [myGuideIds, setMyGuideIds] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchResources();
+    fetchData();
     const saved = localStorage.getItem('my-guide');
     if (saved) setMyGuideIds(JSON.parse(saved));
   }, []);
 
-  const fetchResources = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      // Public view: status != 'temporarily_closed'
-      const { data, error } = await supabase
-        .from('resources')
-        .select('*')
-        .neq('status', 'temporarily_closed')
-        .order('name');
+      const [resourcesRes, categoriesRes] = await Promise.all([
+        supabase
+          .from('resources')
+          .select('*')
+          .neq('status', 'temporarily_closed')
+          .order('name'),
+        supabase
+          .from('categories')
+          .select('*')
+          .order('name')
+      ]);
 
-      if (error) throw error;
-      setResources(data || []);
+      if (resourcesRes.error) throw resourcesRes.error;
+      if (categoriesRes.error) throw categoriesRes.error;
+
+      setResources(resourcesRes.data || []);
+      setCategories(categoriesRes.data || []);
     } catch (err) {
-      console.error('Error fetching resources:', err);
+      console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
@@ -96,7 +100,7 @@ export default function Home() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8 text-center max-w-2xl mx-auto">
         <h1 className="text-4xl font-black text-zinc-900 mb-4 tracking-tight">
-          Resource Superguide
+          SuperGuide
         </h1>
         <p className="text-zinc-600">
           Find support in Saint Paul and Minneapolis. Filter by transit, cost, and recovery stage.
@@ -151,7 +155,7 @@ export default function Home() {
                   className="w-full p-2.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="">All Categories</option>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
 
