@@ -40,6 +40,7 @@ export default function Home() {
           .from('resources')
           .select('*')
           .neq('status', 'temporarily_closed')
+          .neq('status', 'needs_verification')
           .order('name'),
         supabase
           .from('categories')
@@ -75,6 +76,8 @@ export default function Home() {
     setMyGuideIds(newIds);
     localStorage.setItem('my-guide', JSON.stringify(newIds));
   };
+
+  const hasSearchOrFilters = search.trim() !== '' || Object.values(filters).some(v => v !== '');
 
   const filteredResources = resources.filter(r => {
     const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -275,6 +278,14 @@ export default function Home() {
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mb-4" />
           <p className="text-zinc-500 font-medium">Loading resources...</p>
+        </div>
+      ) : !hasSearchOrFilters ? (
+        <div className="text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
+          <Search className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-zinc-900 mb-2">Ready to find help?</h3>
+          <p className="text-zinc-500 max-w-md mx-auto">
+            Use the search bar or filters above to find recovery resources near you.
+          </p>
         </div>
       ) : filteredResources.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
