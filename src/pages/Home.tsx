@@ -103,7 +103,7 @@ export default function Home() {
           SuperGuide
         </h1>
         <p className="text-zinc-600">
-          Find support in Saint Paul and Minneapolis. Filter by transit, cost, and recovery stage.
+          Your path to recovery starts with the right connections
         </p>
       </div>
 
