@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import ResourceDetail from './pages/ResourceDetail';
@@ -44,6 +45,7 @@ export default function App() {
             </div>
           </div>
         </footer>
+        <Analytics />
       </div>
     </Router>
   );
