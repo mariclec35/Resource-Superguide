@@ -17,6 +17,7 @@ export type ResourceStatus = 'active' | 'needs_verification' | 'temporarily_clos
 export interface Category {
   id: string;
   name: string;
+  parent_id?: string | null;
   created_at: string;
 }
 

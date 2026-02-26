@@ -460,8 +460,10 @@ function CategoriesManager() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
+  const [newParentId, setNewParentId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editParentId, setEditParentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -484,10 +486,14 @@ function CategoriesManager() {
     
     const { error } = await supabase
       .from('categories')
-      .insert({ name: newName.trim() });
+      .insert({ 
+        name: newName.trim(),
+        parent_id: newParentId || null
+      });
     
     if (!error) {
       setNewName('');
+      setNewParentId(null);
       fetchCategories();
     } else {
       alert('Error adding category: ' + error.message);
@@ -499,7 +505,10 @@ function CategoriesManager() {
     
     const { error } = await supabase
       .from('categories')
-      .update({ name: editName.trim() })
+      .update({ 
+        name: editName.trim(),
+        parent_id: editParentId || null
+      })
       .eq('id', id);
     
     if (!error) {
@@ -508,6 +517,19 @@ function CategoriesManager() {
     } else {
       alert('Error updating category: ' + error.message);
     }
+  };
+
+  const getParentName = (parentId: string | null | undefined) => {
+    if (!parentId) return null;
+    return categories.find(c => c.id === parentId)?.name;
+  };
+
+  const renderCategoryOptions = (excludeId?: string) => {
+    return categories
+      .filter(c => c.id !== excludeId && !c.parent_id) // Only top-level categories as parents for now to avoid deep nesting complexity
+      .map(c => (
+        <option key={c.id} value={c.id}>{c.name}</option>
+      ));
   };
 
   const handleDelete = async (id: string) => {
@@ -524,7 +546,7 @@ function CategoriesManager() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <form onSubmit={handleAdd} className="flex gap-3">
+      <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
         <input
           type="text"
           placeholder="New category name..."
@@ -532,9 +554,17 @@ function CategoriesManager() {
           onChange={(e) => setNewName(e.target.value)}
           className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
         />
+        <select
+          value={newParentId || ''}
+          onChange={(e) => setNewParentId(e.target.value || null)}
+          className="px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white"
+        >
+          <option value="">No Parent (Top Level)</option>
+          {renderCategoryOptions()}
+        </select>
         <button
           type="submit"
-          className="px-6 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all flex items-center gap-2"
+          className="px-6 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all flex items-center gap-2 whitespace-nowrap"
         >
           <Plus className="w-4 h-4" />
           Add
@@ -551,6 +581,7 @@ function CategoriesManager() {
             <thead>
               <tr className="bg-zinc-50 border-b border-zinc-200">
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Category Name</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Parent</th>
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
@@ -567,7 +598,28 @@ function CategoriesManager() {
                         autoFocus
                       />
                     ) : (
-                      <span className="text-sm font-bold text-zinc-900">{cat.name}</span>
+                      <div className="flex items-center gap-2">
+                        {cat.parent_id && <div className="w-4 h-px bg-zinc-200" />}
+                        <span className={`text-sm font-bold ${cat.parent_id ? 'text-zinc-600' : 'text-zinc-900'}`}>
+                          {cat.name}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {editingId === cat.id ? (
+                      <select
+                        value={editParentId || ''}
+                        onChange={(e) => setEditParentId(e.target.value || null)}
+                        className="w-full px-2 py-1 rounded border border-zinc-200 outline-none focus:ring-1 focus:ring-zinc-900 text-sm bg-white"
+                      >
+                        <option value="">No Parent</option>
+                        {renderCategoryOptions(cat.id)}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-zinc-400 font-medium">
+                        {getParentName(cat.parent_id) || '—'}
+                      </span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -593,6 +645,7 @@ function CategoriesManager() {
                             onClick={() => {
                               setEditingId(cat.id);
                               setEditName(cat.name);
+                              setEditParentId(cat.parent_id || null);
                             }}
                             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100"
                           >
@@ -657,7 +710,17 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*').order('name');
-    if (data) setCategories(data);
+    if (data) {
+      // Sort hierarchically: Parent followed by its children
+      const roots = data.filter(c => !c.parent_id);
+      const hierarchical: Category[] = [];
+      roots.forEach(root => {
+        hierarchical.push(root);
+        const children = data.filter(c => c.parent_id === root.id);
+        hierarchical.push(...children);
+      });
+      setCategories(hierarchical);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -726,7 +789,11 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
               <div>
                 <label className="block text-xs font-bold text-zinc-500 mb-1">Category</label>
                 <select name="category" defaultValue={resource?.category} required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {categories.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.parent_id ? `— ${c.name}` : c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>

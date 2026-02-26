@@ -51,7 +51,16 @@ export default function Home() {
       if (categoriesRes.error) throw categoriesRes.error;
 
       setResources(resourcesRes.data || []);
-      setCategories(categoriesRes.data || []);
+      
+      const catData = categoriesRes.data || [];
+      const roots = catData.filter(c => !c.parent_id);
+      const hierarchical: Category[] = [];
+      roots.forEach(root => {
+        hierarchical.push(root);
+        const children = catData.filter(c => c.parent_id === root.id);
+        hierarchical.push(...children);
+      });
+      setCategories(hierarchical);
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
@@ -155,7 +164,11 @@ export default function Home() {
                   className="w-full p-2.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="">All Categories</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {categories.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.parent_id ? `— ${c.name}` : c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
