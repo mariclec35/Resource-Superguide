@@ -41,4 +41,43 @@ Resource Project introduces structured data management and centralized oversight
 - Category and subcategory schema  
 - Search and filtering interface  
 - Administrative management tools  
-- Frontend built
+- Frontend built with React + Vite  
+- Hosted via Vercel  
+
+---
+
+## Architecture
+
+**Frontend**
+- React  
+- Vite  
+
+**Backend**
+- Supabase (PostgreSQL)  
+- Role-based security policies  
+
+**Core Data Entities**
+- Resources  
+- Categories  
+- Subcategories  
+- Status (active / inactive)  
+- Administrative metadata  
+
+---
+
+## Status
+
+- Database schema implemented  
+- Initial resource entries seeded  
+- UI iteration in progress  
+- Category refinement ongoing  
+
+This repository will continue evolving as the system matures.
+
+---
+
+## Author
+
+Chris Maricle  
+GitHub: mariclec35  
+St. Paul, MN
