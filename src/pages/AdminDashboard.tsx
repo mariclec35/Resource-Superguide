@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
+import { logger } from '../lib/logger';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories' | 'errors'>('resources');
@@ -964,6 +965,17 @@ function ErrorLogsManager() {
           title="Refresh Logs"
         >
           <Clock className="w-4 h-4 text-zinc-400" />
+        </button>
+
+        <button 
+          onClick={() => {
+            const err = new Error("Manual Test Error: " + new Date().toLocaleTimeString());
+            logger.error(err.message, err, { test: true });
+            setTimeout(fetchLogs, 1000);
+          }}
+          className="px-4 py-1.5 bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-zinc-800 transition-all"
+        >
+          Generate Test Error
         </button>
       </div>
 
