@@ -958,10 +958,19 @@ function UsersManager() {
     setLoading(true);
     try {
       const response = await fetch('/api/admin/users');
-      if (!response.ok) throw new Error('Failed to fetch users');
+      if (!response.ok) {
+        let errorMessage = 'Failed to fetch users';
+        try {
+          const err = await response.json();
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          // Not JSON
+        }
+        throw new Error(errorMessage);
+      }
       const data = await response.json();
       setUsers(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching users:', err);
     } finally {
       setLoading(false);
@@ -979,8 +988,14 @@ function UsersManager() {
         body: JSON.stringify({ email: newEmail, password: newPassword }),
       });
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to add user');
+        let errorMessage = 'Failed to add user';
+        try {
+          const err = await response.json();
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          // Not JSON
+        }
+        throw new Error(errorMessage);
       }
       setNewEmail('');
       setNewPassword('');
@@ -998,7 +1013,16 @@ function UsersManager() {
       const response = await fetch(`/api/admin/users/${id}`, {
         method: 'DELETE',
       });
-      if (!response.ok) throw new Error('Failed to delete user');
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete user';
+        try {
+          const err = await response.json();
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          // Not JSON
+        }
+        throw new Error(errorMessage);
+      }
       fetchUsers();
     } catch (err: any) {
       alert(err.message);
@@ -1012,7 +1036,16 @@ function UsersManager() {
       const response = await fetch(`/api/admin/users/${id}/reset-password`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error('Failed to send reset link');
+      if (!response.ok) {
+        let errorMessage = 'Failed to send reset link';
+        try {
+          const err = await response.json();
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          // Not JSON
+        }
+        throw new Error(errorMessage);
+      }
       alert('Password reset link generated. Check server logs or email if configured.');
     } catch (err: any) {
       alert(err.message);
