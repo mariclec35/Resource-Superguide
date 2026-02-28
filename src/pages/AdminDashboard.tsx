@@ -191,14 +191,11 @@ function ResourcesManager() {
 
   const [confirmDelete, setConfirmDelete] = useState<{ id: string, type: 'resource' } | null>(null);
 
-  const handleVerify = async (resource: Resource, notes: string, resetCount: boolean) => {
+  const handleVerify = async (resource: Resource) => {
     const { error } = await supabase
       .from('resources')
       .update({
         status: 'active',
-        last_verified_date: new Date().toISOString().split('T')[0],
-        verification_notes: notes,
-        open_report_count: resetCount ? 0 : resource.open_report_count
       })
       .eq('id', resource.id);
     
@@ -239,11 +236,9 @@ function ResourcesManager() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-50 border-b border-zinc-200">
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Name & Category</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Location</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Resource</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Address</th>
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Reports</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Last Verified</th>
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
@@ -252,39 +247,25 @@ function ResourcesManager() {
                 <tr key={resource.id} className="hover:bg-zinc-50/50 transition-colors">
                   <td className="px-6 py-4">
                     <p className="font-bold text-zinc-900">{resource.name}</p>
-                    <p className="text-xs text-zinc-500">{resource.category}</p>
+                    <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">{resource.category}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm text-zinc-600">{resource.city_direction}</p>
+                    <p className="text-sm text-zinc-600 truncate max-w-[200px]">{resource.address || '—'}</p>
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={resource.status} />
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-sm font-bold ${resource.open_report_count > 0 ? 'text-red-600' : 'text-zinc-400'}`}>
-                      {resource.open_report_count}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-zinc-600">
-                      {resource.last_verified_date ? format(new Date(resource.last_verified_date), 'MMM d, yyyy') : 'Never'}
-                    </p>
-                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => {
-                          const notes = prompt('Verification notes:');
-                          if (notes !== null) {
-                            const reset = confirm('Reset open report count to 0?');
-                            handleVerify(resource, notes, reset);
-                          }
-                        }}
-                        className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all"
-                        title="Mark Verified"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                      </button>
+                      {resource.status !== 'active' && (
+                        <button
+                          onClick={() => handleVerify(resource)}
+                          className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all"
+                          title="Approve / Activate"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setEditingResource(resource);
@@ -613,55 +594,185 @@ function CategoriesManager() {
     }
   };
 
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
-        <input
-          type="text"
-          placeholder="New category name..."
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
-        />
-        <div className="flex gap-3">
-          <input
-            type="number"
-            placeholder="Seq"
-            value={newSequence}
-            onChange={(e) => setNewSequence(parseInt(e.target.value) || 0)}
-            className="w-20 px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
-            title="Sequence Order"
-          />
-          <select
-            value={newParentId || ''}
-            onChange={(e) => setNewParentId(e.target.value || null)}
-            className="px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white"
-          >
-            <option value="">No Parent (Top Level)</option>
-            {renderCategoryOptions()}
-          </select>
+  const renderCategoryCard = (cat: Category, isSub = false) => {
+    const isEditing = editingId === cat.id;
+    const subcategories = categories.filter(c => c.parent_id === cat.id);
+
+    return (
+      <div 
+        key={cat.id} 
+        className={`group transition-all ${isSub ? 'ml-8 mt-2' : 'mt-4 first:mt-0'}`}
+      >
+        <div className={`
+          relative flex items-center gap-4 p-4 rounded-2xl border transition-all
+          ${isEditing ? 'bg-white border-zinc-900 shadow-lg ring-1 ring-zinc-900' : 'bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-sm'}
+          ${isSub ? 'bg-zinc-50/50' : ''}
+        `}>
+          {/* Sequence Badge */}
+          <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-zinc-100 text-zinc-500 font-mono text-xs font-bold">
+            {isEditing ? (
+              <input
+                type="number"
+                value={editSequence}
+                onChange={(e) => setEditSequence(parseInt(e.target.value) || 0)}
+                className="w-full bg-transparent text-center outline-none focus:text-zinc-900"
+              />
+            ) : (
+              <span>{cat.sequence}</span>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {isEditing ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 text-sm font-bold"
+                  autoFocus
+                />
+                <select
+                  value={editParentId || ''}
+                  onChange={(e) => setEditParentId(e.target.value || null)}
+                  className="w-full px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 text-xs bg-white"
+                >
+                  <option value="">No Parent (Top Level)</option>
+                  {renderCategoryOptions(cat.id)}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <h4 className={`text-sm font-bold truncate ${isSub ? 'text-zinc-600' : 'text-zinc-900'}`}>
+                  {cat.name}
+                </h4>
+                {!isSub && subcategories.length > 0 && (
+                  <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest mt-0.5">
+                    {subcategories.length} Subcategories
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={() => handleUpdate(cat.id)}
+                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                  title="Save changes"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setEditingId(null)}
+                  className="p-2 text-zinc-400 hover:bg-zinc-100 rounded-lg transition-colors"
+                  title="Cancel"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setEditingId(cat.id);
+                    setEditName(cat.name);
+                    setEditParentId(cat.parent_id || null);
+                    setEditSequence(cat.sequence || 0);
+                  }}
+                  className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+                  title="Edit category"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(cat.id)}
+                  className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete category"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
-        <button
-          type="submit"
-          className="px-6 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all flex items-center gap-2 whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4" />
-          Add
-        </button>
-      </form>
+
+        {/* Render children if this is a root category */}
+        {!isSub && subcategories.length > 0 && (
+          <div className="relative">
+            <div className="absolute left-5 top-0 bottom-4 w-0.5 bg-zinc-100" />
+            {subcategories.map(sub => renderCategoryCard(sub, true))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-8 max-w-3xl">
+      {/* Add Category Form */}
+      <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Plus className="w-5 h-5 text-zinc-900" />
+          <h3 className="font-bold text-zinc-900">Add New Category</h3>
+        </div>
+        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-12 gap-3">
+          <div className="md:col-span-5">
+            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Name</label>
+            <input
+              type="text"
+              placeholder="e.g. Mental Health"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm font-medium"
+            />
+          </div>
+          <div className="md:col-span-4">
+            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Parent Category</label>
+            <select
+              value={newParentId || ''}
+              onChange={(e) => setNewParentId(e.target.value || null)}
+              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white font-medium"
+            >
+              <option value="">None (Top Level)</option>
+              {renderCategoryOptions()}
+            </select>
+          </div>
+          <div className="md:col-span-1">
+            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Seq</label>
+            <input
+              type="number"
+              value={newSequence}
+              onChange={(e) => setNewSequence(parseInt(e.target.value) || 0)}
+              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm text-center font-mono"
+            />
+          </div>
+          <div className="md:col-span-2 flex items-end">
+            <button
+              type="submit"
+              disabled={!newName.trim()}
+              className="w-full py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm"
+            >
+              Add
+            </button>
+          </div>
+        </form>
+      </div>
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-10 h-10 animate-spin text-zinc-200" />
         </div>
       ) : categories.length === 0 ? (
-        <div className="bg-zinc-50 border border-dashed border-zinc-200 rounded-2xl p-12 text-center space-y-4">
-          <div className="bg-white w-12 h-12 rounded-full flex items-center justify-center mx-auto shadow-sm">
-            <LayoutGrid className="w-6 h-6 text-zinc-400" />
+        <div className="bg-zinc-50 border border-dashed border-zinc-200 rounded-3xl p-16 text-center space-y-6">
+          <div className="bg-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-sm rotate-3">
+            <LayoutGrid className="w-8 h-8 text-zinc-400" />
           </div>
-          <div>
-            <h3 className="text-zinc-900 font-bold">No categories found</h3>
-            <p className="text-zinc-500 text-sm">Start by adding a category above or use the seed button.</p>
+          <div className="max-w-xs mx-auto">
+            <h3 className="text-zinc-900 font-bold text-lg">No categories yet</h3>
+            <p className="text-zinc-500 text-sm mt-1">Organize your resources by creating primary and secondary categories.</p>
           </div>
           <button
             onClick={async () => {
@@ -674,119 +785,18 @@ function CategoriesManager() {
               }
               fetchCategories();
             }}
-            className="px-6 py-2 bg-white border border-zinc-200 text-zinc-900 font-bold rounded-xl hover:bg-zinc-50 transition-all text-sm"
+            className="px-8 py-3 bg-white border border-zinc-200 text-zinc-900 font-bold rounded-2xl hover:bg-zinc-50 hover:shadow-md transition-all text-sm"
           >
             Seed Initial Categories
           </button>
         </div>
       ) : (
-        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200">
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest w-16 text-center">Seq</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Category Name</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Parent</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {categories.map((cat) => (
-                <tr key={cat.id} className="hover:bg-zinc-50/50 transition-colors">
-                  <td className="px-6 py-4 text-center">
-                    {editingId === cat.id ? (
-                      <input
-                        type="number"
-                        value={editSequence}
-                        onChange={(e) => setEditSequence(parseInt(e.target.value) || 0)}
-                        className="w-16 px-2 py-1 rounded border border-zinc-200 outline-none focus:ring-1 focus:ring-zinc-900 text-sm text-center"
-                      />
-                    ) : (
-                      <span className="text-sm font-mono text-zinc-400">{cat.sequence}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    {editingId === cat.id ? (
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="w-full px-2 py-1 rounded border border-zinc-200 outline-none focus:ring-1 focus:ring-zinc-900 text-sm"
-                        autoFocus
-                      />
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {cat.parent_id && (
-                          <div className="flex items-center gap-2 ml-4">
-                            <div className="w-3 h-3 border-l-2 border-b-2 border-zinc-200 rounded-bl-lg -mt-1" />
-                          </div>
-                        )}
-                        <span className={`text-sm font-bold ${cat.parent_id ? 'text-zinc-500 font-medium' : 'text-zinc-900'}`}>
-                          {cat.name}
-                        </span>
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    {editingId === cat.id ? (
-                      <select
-                        value={editParentId || ''}
-                        onChange={(e) => setEditParentId(e.target.value || null)}
-                        className="w-full px-2 py-1 rounded border border-zinc-200 outline-none focus:ring-1 focus:ring-zinc-900 text-sm bg-white"
-                      >
-                        <option value="">No Parent</option>
-                        {renderCategoryOptions(cat.id)}
-                      </select>
-                    ) : (
-                      <span className="text-xs text-zinc-400 font-medium">
-                        {getParentName(cat.parent_id) || '—'}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {editingId === cat.id ? (
-                        <>
-                          <button
-                            onClick={() => handleUpdate(cat.id)}
-                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => {
-                              setEditingId(cat.id);
-                              setEditName(cat.name);
-                              setEditParentId(cat.parent_id || null);
-                              setEditSequence(cat.sequence || 0);
-                            }}
-                            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(cat.id)}
-                            className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2 pb-20">
+          <div className="flex items-center justify-between px-2 mb-4">
+            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Category Structure</h3>
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{categories.length} Total</span>
+          </div>
+          {categories.filter(c => !c.parent_id).map(root => renderCategoryCard(root))}
         </div>
       )}
     </div>
@@ -874,19 +884,10 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
     const data = {
       name: formData.get('name') as string,
       category: formData.get('category') as string,
-      city_direction: formData.get('city_direction') as string,
-      recovery_stage: formData.getAll('recovery_stage') as string[],
-      transit_accessibility: formData.get('transit_accessibility') as string,
-      walkability: formData.get('walkability') as string,
-      access_indicators: formData.getAll('access_indicators') as string[],
-      snap_accepted: formData.get('snap_accepted') as string,
-      cost: formData.get('cost') as string,
       address: formData.get('address') as string,
       phone: (formData.get('phone') as string) || null,
       website: (formData.get('website') as string) || null,
-      hours: (formData.get('hours') as string) || null,
       description: (formData.get('description') as string) || null,
-      best_for: (formData.get('best_for') as string) || null,
       status: (formData.get('status') as string) || 'active',
     };
 
@@ -922,16 +923,16 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
         </div>
 
         <form id="resource-form" onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
               <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Basic Info</h3>
               <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Resource Name</label>
-                <input name="name" defaultValue={resource?.name} required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Resource Name</label>
+                <input name="name" defaultValue={resource?.name} required className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Category</label>
-                <select name="category" defaultValue={resource?.category} required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Category</label>
+                <select name="category" defaultValue={resource?.category} required className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all bg-white">
                   {categories.map(c => (
                     <option key={c.id} value={c.name}>
                       {c.parent_id ? `— ${c.name}` : c.name}
@@ -940,12 +941,8 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">City + Direction</label>
-                <input name="city_direction" defaultValue={resource?.city_direction} placeholder="e.g. Saint Paul - East" required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Status</label>
-                <select name="status" defaultValue={resource?.status} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Status</label>
+                <select name="status" defaultValue={resource?.status} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all bg-white">
                   <option value="active">Active</option>
                   <option value="needs_verification">Needs Verification</option>
                   <option value="temporarily_closed">Temporarily Closed</option>
@@ -953,104 +950,26 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Access & Transit</h3>
+            <div className="space-y-6">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Contact & Details</h3>
               <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Transit Accessibility</label>
-                <select name="transit_accessibility" defaultValue={resource?.transit_accessibility} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
-                  <option value="On Major Bus Line">On Major Bus Line</option>
-                  <option value="Near Light Rail (Green Line / Blue Line)">Near Light Rail</option>
-                  <option value="Multiple Transit Options">Multiple Transit Options</option>
-                  <option value="Limited Transit Access">Limited Transit Access</option>
-                  <option value="Car Recommended">Car Recommended</option>
-                </select>
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Address</label>
+                <input name="address" defaultValue={resource?.address} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Walkability</label>
-                <select name="walkability" defaultValue={resource?.walkability} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
-                  <option value="Walkable ≤ 15 minutes">Walkable ≤ 15 minutes</option>
-                  <option value="Walkable 16–30 minutes">Walkable 16–30 minutes</option>
-                  <option value="Unknown">Unknown</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">SNAP Accepted</label>
-                <select name="snap_accepted" defaultValue={resource?.snap_accepted} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                  <option value="N/A">N/A</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Cost</label>
-                <select name="cost" defaultValue={resource?.cost} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900">
-                  <option value="Free">Free</option>
-                  <option value="Sliding scale">Sliding scale</option>
-                  <option value="Insurance">Insurance</option>
-                  <option value="Fee">Fee</option>
-                  <option value="Mixed">Mixed</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Multi-select Options</h3>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-2">Recovery Stages</label>
-                <div className="flex flex-wrap gap-2">
-                  {['crisis', 'stabilizing', 'growth'].map(s => (
-                    <label key={s} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200 text-sm cursor-pointer hover:bg-zinc-50">
-                      <input type="checkbox" name="recovery_stage" value={s} defaultChecked={resource?.recovery_stage.includes(s as any)} className="rounded text-zinc-900" />
-                      <span className="capitalize">{s}</span>
-                    </label>
-                  ))}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 mb-1.5">Phone</label>
+                  <input name="phone" defaultValue={resource?.phone || ''} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 mb-1.5">Website</label>
+                  <input name="website" defaultValue={resource?.website || ''} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-2">Access Indicators</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Walk-in friendly', 'Application required', 'Waitlist likely', 'Referral required', 'ID required', 'Insurance required'].map(i => (
-                    <label key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200 text-xs cursor-pointer hover:bg-zinc-50">
-                      <input type="checkbox" name="access_indicators" value={i} defaultChecked={resource?.access_indicators.includes(i)} className="rounded text-zinc-900" />
-                      <span>{i}</span>
-                    </label>
-                  ))}
-                </div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Description</label>
+                <textarea name="description" defaultValue={resource?.description || ''} rows={4} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Contact Details</h3>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Address</label>
-                <input name="address" defaultValue={resource?.address} required className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Phone</label>
-                <input name="phone" defaultValue={resource?.phone || ''} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Website</label>
-                <input name="website" defaultValue={resource?.website || ''} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1">Hours</label>
-                <textarea name="hours" defaultValue={resource?.hours || ''} rows={2} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Descriptions</h3>
-            <div>
-              <label className="block text-xs font-bold text-zinc-500 mb-1">Description</label>
-              <textarea name="description" defaultValue={resource?.description || ''} rows={4} className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-zinc-500 mb-1">Best For (Short summary)</label>
-              <input name="best_for" defaultValue={resource?.best_for || ''} placeholder="e.g. Quick walk-in food support" className="w-full p-2.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900" />
             </div>
           </div>
         </form>

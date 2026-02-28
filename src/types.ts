@@ -26,23 +26,11 @@ export interface Resource {
   id: string;
   name: string;
   category: string;
-  city_direction: string;
-  recovery_stage: RecoveryStage[];
-  transit_accessibility: TransitAccessibility;
-  walkability: Walkability;
-  access_indicators: string[];
-  snap_accepted: 'Yes' | 'No' | 'N/A';
-  cost: string;
   address: string;
   phone: string | null;
   website: string | null;
-  hours: string | null;
   description: string | null;
-  best_for: string | null;
   status: ResourceStatus;
-  last_verified_date: string | null;
-  verification_notes: string | null;
-  open_report_count: number;
   created_at: string;
 }
 

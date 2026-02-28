@@ -3,8 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Resource } from '../types';
 import { 
-  ArrowLeft, MapPin, Phone, Globe, Clock, Bus, Footprints as Walk, 
-  CreditCard, ShoppingBag, CheckCircle2, AlertTriangle, Loader2,
+  ArrowLeft, MapPin, Phone, Globe, CheckCircle2, AlertTriangle, Loader2,
   ExternalLink, Share2, MessageSquare, BookOpen
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -87,12 +86,11 @@ export default function ResourceDetail() {
 
       if (reportError) throw reportError;
 
-      // 2. Update resource status and count
+      // 2. Update resource status
       const { error: resourceError } = await supabase
         .from('resources')
         .update({
           status: 'needs_verification',
-          open_report_count: (resource.open_report_count || 0) + 1
         })
         .eq('id', id);
 
@@ -150,10 +148,6 @@ export default function ResourceDetail() {
               <h1 className="text-3xl sm:text-4xl font-black text-zinc-900 tracking-tight">
                 {resource.name}
               </h1>
-              <p className="text-zinc-500 mt-2 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4" />
-                {resource.city_direction}
-              </p>
             </div>
 
             <div className="flex flex-col gap-2 w-full sm:w-auto">
@@ -188,31 +182,16 @@ export default function ResourceDetail() {
                   {resource.description || 'No description provided.'}
                 </p>
               </div>
-
-              {resource.best_for && (
-                <div>
-                  <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">Best For</h3>
-                  <p className="text-zinc-700 italic">"{resource.best_for}"</p>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                {resource.recovery_stage.map(stage => (
-                  <span key={stage} className="px-3 py-1 rounded-lg bg-zinc-100 text-zinc-600 text-sm font-semibold capitalize">
-                    {stage} Stage
-                  </span>
-                ))}
-              </div>
             </div>
 
             <div className="bg-zinc-50 rounded-2xl p-6 space-y-4 border border-zinc-100">
-              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">Contact & Access</h3>
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">Contact & Details</h3>
               
               <div className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-bold text-zinc-900">Address</p>
-                  <p className="text-sm text-zinc-600">{resource.address}</p>
+                  <p className="text-sm text-zinc-600">{resource.address || 'No address listed'}</p>
                 </div>
               </div>
 
@@ -233,71 +212,18 @@ export default function ResourceDetail() {
                   <Globe className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-bold text-zinc-900">Website</p>
-                    <a href={resource.website} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
+                    <a 
+                      href={resource.website.startsWith('http') ? resource.website : `https://${resource.website}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-sm text-emerald-600 hover:underline flex items-center gap-1"
+                    >
                       Visit Website
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
                 </div>
               )}
-
-              {resource.hours && (
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-zinc-900">Hours</p>
-                    <p className="text-sm text-zinc-600 whitespace-pre-wrap">{resource.hours}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Access Indicators Section */}
-        <div className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 bg-zinc-50/50">
-          <div>
-            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Bus className="w-4 h-4" /> Transit & Walking
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Bus className="w-4 h-4 text-emerald-600" />
-                <span className="text-zinc-700">{resource.transit_accessibility}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Walk className="w-4 h-4 text-emerald-600" />
-                <span className="text-zinc-700">{resource.walkability}</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <CreditCard className="w-4 h-4" /> Cost & SNAP
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <CreditCard className="w-4 h-4 text-emerald-600" />
-                <span className="text-zinc-700">Cost: {resource.cost}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <ShoppingBag className="w-4 h-4 text-emerald-600" />
-                <span className="text-zinc-700">SNAP Accepted: {resource.snap_accepted}</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" /> Access Requirements
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {resource.access_indicators.map(indicator => (
-                <span key={indicator} className="px-2 py-1 bg-white border border-zinc-200 rounded text-xs font-medium text-zinc-600">
-                  {indicator}
-                </span>
-              ))}
             </div>
           </div>
         </div>
@@ -305,9 +231,6 @@ export default function ResourceDetail() {
         {/* Footer Actions */}
         <div className="p-8 border-t border-zinc-100 flex flex-wrap items-center justify-between gap-4">
           <div className="text-sm text-zinc-400 italic">
-            {resource.last_verified_date && (
-              <span>Last verified: {new Date(resource.last_verified_date).toLocaleDateString()}</span>
-            )}
           </div>
           
           <div className="flex items-center gap-4">

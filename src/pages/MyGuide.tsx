@@ -84,15 +84,15 @@ export default function MyGuide() {
       
       const tableData = (items as Resource[]).map(item => [
         item.name,
-        `${item.city_direction}\n${item.address}`,
+        item.address || 'N/A',
         item.phone || 'N/A',
-        `${item.transit_accessibility}\n${item.walkability}`,
+        item.website || 'N/A',
         item.description?.substring(0, 150) + (item.description && item.description.length > 150 ? '...' : '') || 'N/A'
       ]);
 
       autoTable(doc, {
         startY: currentY + 5,
-        head: [['Name', 'Location', 'Phone', 'Access', 'Description']],
+        head: [['Name', 'Address', 'Phone', 'Website', 'Description']],
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: [16, 185, 129] }, // Emerald-500

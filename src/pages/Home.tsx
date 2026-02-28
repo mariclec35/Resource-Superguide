@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Resource, RecoveryStage, TransitAccessibility, Walkability, Category } from '../types';
+import { Resource, Category } from '../types';
 import ResourceCard from '../components/ResourceCard';
 import { Search, Filter, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-
-const CITIES = ['Saint Paul', 'Minneapolis'];
-const DIRECTIONS = ['North', 'South', 'East', 'West', 'Central', 'Northeast', 'Northwest', 'Southeast', 'Southwest'];
 
 export default function Home() {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -15,13 +12,6 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
     category: '',
-    city: '',
-    direction: '',
-    recoveryStage: '' as RecoveryStage | '',
-    transit: '' as TransitAccessibility | '',
-    walkability: '' as Walkability | '',
-    snap: '',
-    cost: '',
   });
   const [showFilters, setShowFilters] = useState(false);
   const [myGuideIds, setMyGuideIds] = useState<string[]>([]);
@@ -111,28 +101,13 @@ export default function Home() {
     const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase()) || 
                          r.description?.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = !filters.category || r.category === filters.category;
-    const matchesCity = !filters.city || r.city_direction.includes(filters.city);
-    const matchesDirection = !filters.direction || r.city_direction.includes(filters.direction);
-    const matchesStage = !filters.recoveryStage || r.recovery_stage.includes(filters.recoveryStage as RecoveryStage);
-    const matchesTransit = !filters.transit || r.transit_accessibility === filters.transit;
-    const matchesWalk = !filters.walkability || r.walkability === filters.walkability;
-    const matchesSnap = !filters.snap || r.snap_accepted === filters.snap;
-    const matchesCost = !filters.cost || r.cost === filters.cost;
 
-    return matchesSearch && matchesCategory && matchesCity && matchesDirection && 
-           matchesStage && matchesTransit && matchesWalk && matchesSnap && matchesCost;
+    return matchesSearch && matchesCategory;
   });
 
   const clearFilters = () => {
     setFilters({
       category: '',
-      city: '',
-      direction: '',
-      recoveryStage: '',
-      transit: '',
-      walkability: '',
-      snap: '',
-      cost: '',
     });
   };
 
@@ -186,8 +161,8 @@ export default function Home() {
             exit={{ opacity: 0, y: -20 }}
             className="bg-white border border-zinc-200 rounded-2xl p-6 mb-8 shadow-sm"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
+            <div className="flex flex-col sm:flex-row items-end gap-4">
+              <div className="flex-1">
                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Category</label>
                 <select
                   value={filters.category}
@@ -203,99 +178,13 @@ export default function Home() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">City</label>
-                <select
-                  value={filters.city}
-                  onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-                  className="w-full p-2.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                >
-                  <option value="">All Cities</option>
-                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Direction</label>
-                <select
-                  value={filters.direction}
-                  onChange={(e) => setFilters({ ...filters, direction: e.target.value })}
-                  className="w-full p-2.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                >
-                  <option value="">All Directions</option>
-                  {DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Recovery Stage</label>
-                <select
-                  value={filters.recoveryStage}
-                  onChange={(e) => setFilters({ ...filters, recoveryStage: e.target.value as RecoveryStage })}
-                  className="w-full p-2.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                >
-                  <option value="">All Stages</option>
-                  <option value="crisis">Crisis</option>
-                  <option value="stabilizing">Stabilizing</option>
-                  <option value="growth">Growth</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Transit</label>
-                <select
-                  value={filters.transit}
-                  onChange={(e) => setFilters({ ...filters, transit: e.target.value as TransitAccessibility })}
-                  className="w-full p-2.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                >
-                  <option value="">Any Transit</option>
-                  <option value="On Major Bus Line">On Major Bus Line</option>
-                  <option value="Near Light Rail (Green Line / Blue Line)">Near Light Rail</option>
-                  <option value="Multiple Transit Options">Multiple Options</option>
-                  <option value="Limited Transit Access">Limited Access</option>
-                  <option value="Car Recommended">Car Recommended</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">SNAP Accepted</label>
-                <select
-                  value={filters.snap}
-                  onChange={(e) => setFilters({ ...filters, snap: e.target.value })}
-                  className="w-full p-2.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                >
-                  <option value="">Any</option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                  <option value="N/A">N/A</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Cost</label>
-                <select
-                  value={filters.cost}
-                  onChange={(e) => setFilters({ ...filters, cost: e.target.value })}
-                  className="w-full p-2.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                >
-                  <option value="">Any Cost</option>
-                  <option value="Free">Free</option>
-                  <option value="Sliding scale">Sliding Scale</option>
-                  <option value="Insurance">Insurance</option>
-                  <option value="Fee">Fee</option>
-                  <option value="Mixed">Mixed</option>
-                </select>
-              </div>
-
-              <div className="flex items-end">
-                <button
-                  onClick={clearFilters}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg border border-zinc-200 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                  Clear All
-                </button>
-              </div>
+              <button
+                onClick={clearFilters}
+                className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-zinc-200 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Clear
+              </button>
             </div>
           </motion.div>
         )}
