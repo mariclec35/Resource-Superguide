@@ -2,6 +2,9 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import fs from "fs";
+
+fs.writeFileSync("server_start.log", `${new Date().toISOString()} - Server process started\n`);
 
 dotenv.config();
 
@@ -9,9 +12,61 @@ const app = express();
 const PORT = 3000;
 
 // Supabase Admin Client for backend logging
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  fs.appendFileSync("server_start.log", `${new Date().toISOString()} - Missing Supabase configuration\n`);
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Seed requested admin user immediately
+(async () => {
+  try {
+    const email = "rosesroses1212@gmail.com";
+    const password = "Lovechris*1212";
+    const logFile = "seed_results.log";
+    
+    fs.appendFileSync(logFile, `${new Date().toISOString()} - Seeding check started for ${email}\n`);
+    
+    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+    
+    if (listError) {
+      const msg = `Failed to list users during seeding: ${JSON.stringify(listError)}`;
+      console.error(msg);
+      fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+    } else {
+      const existingUser = users.find(u => u.email === email);
+      if (!existingUser) {
+        console.log(`Creating admin user ${email}...`);
+        const { error: createError } = await supabase.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true
+        });
+        
+        if (createError) {
+          const msg = `Failed to create admin user ${email}: ${JSON.stringify(createError)}`;
+          console.error(msg);
+          fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+        } else {
+          const msg = `Successfully created admin user ${email}`;
+          console.log(msg);
+          fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+        }
+      } else {
+        const msg = `Admin user ${email} already exists.`;
+        console.log(msg);
+        fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+      }
+    }
+  } catch (err: any) {
+    const msg = `Unexpected error during seeding: ${err.message}`;
+    console.error(msg);
+    fs.appendFileSync("seed_results.log", `${new Date().toISOString()} - ${msg}\n`);
+  }
+})();
 
 app.use(express.json());
 

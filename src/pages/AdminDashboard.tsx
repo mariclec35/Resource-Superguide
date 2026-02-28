@@ -6,7 +6,7 @@ import {
   Settings, LogOut, Loader2, Search, Filter,
   CheckCircle2, XCircle, Clock, MoreVertical,
   Edit2, Trash2, ExternalLink, ShieldAlert, Terminal,
-  ChevronDown, ChevronUp, Users
+  ChevronDown, ChevronUp, Users, LayoutGrid
 } from 'lucide-react';
 import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
@@ -490,9 +490,11 @@ function CategoriesManager() {
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
   const [newParentId, setNewParentId] = useState<string | null>(null);
+  const [newSequence, setNewSequence] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editParentId, setEditParentId] = useState<string | null>(null);
+  const [editSequence, setEditSequence] = useState(0);
 
   useEffect(() => {
     fetchCategories();
@@ -500,13 +502,48 @@ function CategoriesManager() {
 
   const fetchCategories = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name');
-    
-    if (!error) setCategories(data || []);
-    setLoading(false);
+    try {
+      // Try with sequence first
+      let { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sequence', { ascending: true })
+        .order('name');
+      
+      // Fallback if any error occurs (likely missing column)
+      if (error) {
+        console.warn('Sequence fetch failed, falling back to name sort:', error.message);
+        const fallback = await supabase
+          .from('categories')
+          .select('*')
+          .order('name');
+        data = fallback.data;
+        error = fallback.error;
+      }
+      
+      if (error) {
+        console.error('Error fetching categories:', error);
+        logger.error('Failed to fetch categories', error);
+      } else if (data) {
+        if (data.length === 0) {
+          setCategories([]);
+        } else {
+          const roots = data.filter(c => !c.parent_id);
+          const hierarchical: Category[] = [];
+          roots.forEach(root => {
+            hierarchical.push(root);
+            const children = data.filter(c => c.parent_id === root.id);
+            hierarchical.push(...children);
+          });
+          // Fallback to flat list if hierarchical logic resulted in empty but we have data
+          setCategories(hierarchical.length > 0 ? hierarchical : data);
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error in fetchCategories:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -517,12 +554,14 @@ function CategoriesManager() {
       .from('categories')
       .insert({ 
         name: newName.trim(),
-        parent_id: newParentId || null
+        parent_id: newParentId || null,
+        sequence: newSequence
       });
     
     if (!error) {
       setNewName('');
       setNewParentId(null);
+      setNewSequence(0);
       fetchCategories();
     } else {
       alert('Error adding category: ' + error.message);
@@ -536,7 +575,8 @@ function CategoriesManager() {
       .from('categories')
       .update({ 
         name: editName.trim(),
-        parent_id: editParentId || null
+        parent_id: editParentId || null,
+        sequence: editSequence
       })
       .eq('id', id);
     
@@ -583,14 +623,24 @@ function CategoriesManager() {
           onChange={(e) => setNewName(e.target.value)}
           className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
         />
-        <select
-          value={newParentId || ''}
-          onChange={(e) => setNewParentId(e.target.value || null)}
-          className="px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white"
-        >
-          <option value="">No Parent (Top Level)</option>
-          {renderCategoryOptions()}
-        </select>
+        <div className="flex gap-3">
+          <input
+            type="number"
+            placeholder="Seq"
+            value={newSequence}
+            onChange={(e) => setNewSequence(parseInt(e.target.value) || 0)}
+            className="w-20 px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
+            title="Sequence Order"
+          />
+          <select
+            value={newParentId || ''}
+            onChange={(e) => setNewParentId(e.target.value || null)}
+            className="px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white"
+          >
+            <option value="">No Parent (Top Level)</option>
+            {renderCategoryOptions()}
+          </select>
+        </div>
         <button
           type="submit"
           className="px-6 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all flex items-center gap-2 whitespace-nowrap"
@@ -604,11 +654,37 @@ function CategoriesManager() {
         <div className="flex justify-center py-10">
           <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
         </div>
+      ) : categories.length === 0 ? (
+        <div className="bg-zinc-50 border border-dashed border-zinc-200 rounded-2xl p-12 text-center space-y-4">
+          <div className="bg-white w-12 h-12 rounded-full flex items-center justify-center mx-auto shadow-sm">
+            <LayoutGrid className="w-6 h-6 text-zinc-400" />
+          </div>
+          <div>
+            <h3 className="text-zinc-900 font-bold">No categories found</h3>
+            <p className="text-zinc-500 text-sm">Start by adding a category above or use the seed button.</p>
+          </div>
+          <button
+            onClick={async () => {
+              const initial = [
+                'Housing', 'Food Shelf', 'Mental Health', 'Chemical Dependency', 
+                'Employment', 'Legal', 'Medical', 'Crisis', 'Other'
+              ];
+              for (const name of initial) {
+                await supabase.from('categories').insert({ name });
+              }
+              fetchCategories();
+            }}
+            className="px-6 py-2 bg-white border border-zinc-200 text-zinc-900 font-bold rounded-xl hover:bg-zinc-50 transition-all text-sm"
+          >
+            Seed Initial Categories
+          </button>
+        </div>
       ) : (
         <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-50 border-b border-zinc-200">
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest w-16 text-center">Seq</th>
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Category Name</th>
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Parent</th>
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
@@ -617,6 +693,18 @@ function CategoriesManager() {
             <tbody className="divide-y divide-zinc-100">
               {categories.map((cat) => (
                 <tr key={cat.id} className="hover:bg-zinc-50/50 transition-colors">
+                  <td className="px-6 py-4 text-center">
+                    {editingId === cat.id ? (
+                      <input
+                        type="number"
+                        value={editSequence}
+                        onChange={(e) => setEditSequence(parseInt(e.target.value) || 0)}
+                        className="w-16 px-2 py-1 rounded border border-zinc-200 outline-none focus:ring-1 focus:ring-zinc-900 text-sm text-center"
+                      />
+                    ) : (
+                      <span className="text-sm font-mono text-zinc-400">{cat.sequence}</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     {editingId === cat.id ? (
                       <input
@@ -628,8 +716,12 @@ function CategoriesManager() {
                       />
                     ) : (
                       <div className="flex items-center gap-2">
-                        {cat.parent_id && <div className="w-4 h-px bg-zinc-200" />}
-                        <span className={`text-sm font-bold ${cat.parent_id ? 'text-zinc-600' : 'text-zinc-900'}`}>
+                        {cat.parent_id && (
+                          <div className="flex items-center gap-2 ml-4">
+                            <div className="w-3 h-3 border-l-2 border-b-2 border-zinc-200 rounded-bl-lg -mt-1" />
+                          </div>
+                        )}
+                        <span className={`text-sm font-bold ${cat.parent_id ? 'text-zinc-500 font-medium' : 'text-zinc-900'}`}>
                           {cat.name}
                         </span>
                       </div>
@@ -675,6 +767,7 @@ function CategoriesManager() {
                               setEditingId(cat.id);
                               setEditName(cat.name);
                               setEditParentId(cat.parent_id || null);
+                              setEditSequence(cat.sequence || 0);
                             }}
                             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100"
                           >
@@ -738,17 +831,38 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
   }, []);
 
   const fetchCategories = async () => {
-    const { data } = await supabase.from('categories').select('*').order('name');
-    if (data) {
-      // Sort hierarchically: Parent followed by its children
-      const roots = data.filter(c => !c.parent_id);
-      const hierarchical: Category[] = [];
-      roots.forEach(root => {
-        hierarchical.push(root);
-        const children = data.filter(c => c.parent_id === root.id);
-        hierarchical.push(...children);
-      });
-      setCategories(hierarchical);
+    try {
+      let { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sequence', { ascending: true })
+        .order('name');
+      
+      // Fallback if any error occurs
+      if (error) {
+        const fallback = await supabase
+          .from('categories')
+          .select('*')
+          .order('name');
+        data = fallback.data;
+      }
+
+      if (data) {
+        if (data.length === 0) {
+          setCategories([]);
+        } else {
+          const roots = data.filter(c => !c.parent_id);
+          const hierarchical: Category[] = [];
+          roots.forEach(root => {
+            hierarchical.push(root);
+            const children = data.filter(c => c.parent_id === root.id);
+            hierarchical.push(...children);
+          });
+          setCategories(hierarchical.length > 0 ? hierarchical : data);
+        }
+      }
+    } catch (err) {
+      console.error('Error in ResourceForm fetchCategories:', err);
     }
   };
 

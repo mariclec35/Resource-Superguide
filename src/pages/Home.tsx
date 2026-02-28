@@ -35,33 +35,61 @@ export default function Home() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resourcesRes, categoriesRes] = await Promise.all([
-        supabase
-          .from('resources')
-          .select('*')
-          .neq('status', 'temporarily_closed')
-          .neq('status', 'needs_verification')
-          .order('name'),
-        supabase
+      // 1. Fetch Resources
+      const { data: resData, error: resError } = await supabase
+        .from('resources')
+        .select('*')
+        .neq('status', 'temporarily_closed')
+        .neq('status', 'needs_verification')
+        .order('name');
+
+      if (resError) throw resError;
+      setResources(resData || []);
+
+      // 2. Fetch Categories with fallback
+      let catData: any[] = [];
+      
+      // Try with sequence first
+      const { data: seqData, error: seqError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sequence', { ascending: true })
+        .order('name');
+
+      if (!seqError && seqData) {
+        catData = seqData;
+      } else {
+        // Fallback to name-only sort
+        const { data: nameData, error: nameError } = await supabase
           .from('categories')
           .select('*')
-          .order('name')
-      ]);
+          .order('name');
+        
+        if (nameError) throw nameError;
+        catData = nameData || [];
+      }
 
-      if (resourcesRes.error) throw resourcesRes.error;
-      if (categoriesRes.error) throw categoriesRes.error;
-
-      setResources(resourcesRes.data || []);
-      
-      const catData = categoriesRes.data || [];
-      const roots = catData.filter(c => !c.parent_id);
-      const hierarchical: Category[] = [];
-      roots.forEach(root => {
-        hierarchical.push(root);
-        const children = catData.filter(c => c.parent_id === root.id);
-        hierarchical.push(...children);
-      });
-      setCategories(hierarchical);
+      // 3. Process Hierarchical Data
+      if (catData.length > 0) {
+        // Check if parent_id exists in the data
+        const hasParentId = 'parent_id' in catData[0];
+        
+        if (!hasParentId) {
+          setCategories(catData);
+        } else {
+          const roots = catData.filter(c => !c.parent_id);
+          const hierarchical: Category[] = [];
+          roots.forEach(root => {
+            hierarchical.push(root);
+            const children = catData.filter(c => c.parent_id === root.id);
+            hierarchical.push(...children);
+          });
+          // If hierarchical logic resulted in empty but we have data, fallback to flat
+          setCategories(hierarchical.length > 0 ? hierarchical : catData);
+        }
+      } else {
+        setCategories([]);
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {

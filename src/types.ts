@@ -18,6 +18,7 @@ export interface Category {
   id: string;
   name: string;
   parent_id?: string | null;
+  sequence: number;
   created_at: string;
 }
 

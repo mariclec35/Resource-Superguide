@@ -32,6 +32,8 @@ CREATE TABLE resources (
 CREATE TABLE categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
+  parent_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  sequence INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
