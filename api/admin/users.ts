@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -29,12 +29,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: "Email and password are required" });
       }
 
+      console.log(`Attempting to create admin user: ${email}`);
       const { data, error } = await supabase.auth.admin.createUser({
         email,
         password,
         email_confirm: true
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error("Supabase createUser error:", error);
+        const authError = error as any;
+        return res.status(error.status || 500).json({ 
+          error: error.message || "Internal server error",
+          details: authError.details || undefined
+        });
+      }
+      
+      console.log(`Successfully created admin user: ${data.user.id}`);
       return res.status(201).json(data.user);
     }
 

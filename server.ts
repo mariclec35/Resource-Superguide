@@ -84,12 +84,23 @@ app.post("/api/admin/users", async (req, res) => {
   }
 
   try {
+    console.log(`Attempting to create admin user: ${email}`);
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true
     });
-    if (error) throw error;
+    
+    if (error) {
+      console.error("Supabase createUser error:", error);
+      const authError = error as any;
+      return res.status(error.status || 500).json({ 
+        error: error.message || "Internal server error",
+        details: authError.details || undefined
+      });
+    }
+    
+    console.log(`Successfully created admin user: ${data.user.id}`);
     res.status(201).json(data.user);
   } catch (err: any) {
     console.error("Failed to create user:", err);

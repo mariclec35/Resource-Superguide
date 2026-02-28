@@ -179,11 +179,17 @@ function ResourcesManager() {
   );
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this resource?')) {
-      const { error } = await supabase.from('resources').delete().eq('id', id);
-      if (!error) fetchResources();
-    }
+    setConfirmDelete({ id, type: 'resource' });
   };
+
+  const executeDelete = async () => {
+    if (!confirmDelete) return;
+    const { error } = await supabase.from('resources').delete().eq('id', confirmDelete.id);
+    if (!error) fetchResources();
+    setConfirmDelete(null);
+  };
+
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string, type: 'resource' } | null>(null);
 
   const handleVerify = async (resource: Resource, notes: string, resetCount: boolean) => {
     const { error } = await supabase
@@ -303,6 +309,15 @@ function ResourcesManager() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmationModal
+          title="Delete Resource"
+          message="Are you sure you want to delete this resource? This action cannot be undone."
+          onConfirm={executeDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
 
       {showForm && (
@@ -949,6 +964,7 @@ function UsersManager() {
   const [addingUser, setAddingUser] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string, email: string } | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -992,6 +1008,9 @@ function UsersManager() {
         try {
           const err = await response.json();
           errorMessage = err.error || errorMessage;
+          if (err.details) {
+            errorMessage += ` (${err.details})`;
+          }
         } catch (e) {
           // Not JSON
         }
@@ -1007,10 +1026,13 @@ function UsersManager() {
   };
 
   const handleDeleteUser = async (id: string, email: string) => {
-    if (!confirm(`Are you sure you want to delete admin user ${email}?`)) return;
+    setConfirmDelete({ id, email });
+  };
 
+  const executeDelete = async () => {
+    if (!confirmDelete) return;
     try {
-      const response = await fetch(`/api/admin/users/${id}`, {
+      const response = await fetch(`/api/admin/users/${confirmDelete.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -1026,6 +1048,8 @@ function UsersManager() {
       fetchUsers();
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setConfirmDelete(null);
     }
   };
 
@@ -1173,6 +1197,55 @@ function UsersManager() {
           </table>
         </div>
       )}
+
+      {confirmDelete && (
+        <ConfirmationModal
+          title="Delete Admin User"
+          message={`Are you sure you want to delete admin user ${confirmDelete.email}? This action cannot be undone.`}
+          onConfirm={executeDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ConfirmationModal({ 
+  title, 
+  message, 
+  onConfirm, 
+  onCancel 
+}: { 
+  title: string, 
+  message: string, 
+  onConfirm: () => void, 
+  onCancel: () => void 
+}) {
+  return (
+    <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="p-6 text-center">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Trash2 className="w-8 h-8 text-red-600" />
+          </div>
+          <h3 className="text-xl font-black text-zinc-900 tracking-tight mb-2">{title}</h3>
+          <p className="text-zinc-500 text-sm leading-relaxed">{message}</p>
+        </div>
+        <div className="p-6 bg-zinc-50 flex gap-3">
+          <button 
+            onClick={onCancel}
+            className="flex-1 px-6 py-3 bg-white border border-zinc-200 text-zinc-600 font-bold rounded-xl hover:bg-zinc-100 transition-all"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
