@@ -6,15 +6,16 @@ import {
   Settings, LogOut, Loader2, Search, Filter,
   CheckCircle2, XCircle, Clock, MoreVertical,
   Edit2, Trash2, ExternalLink, ShieldAlert, Terminal,
-  ChevronDown, ChevronUp, Users, LayoutGrid, Upload
+  ChevronDown, ChevronUp, Users, LayoutGrid, Upload, Bot
 } from 'lucide-react';
 import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
 import { logger } from '../lib/logger';
 import DataImporter from '../components/DataImporter';
+import AdminAI from '../components/AdminAI';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories' | 'errors' | 'users' | 'import'>('categories');
+  const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories' | 'errors' | 'users' | 'import' | 'ai'>('categories');
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
@@ -140,6 +141,19 @@ export default function AdminDashboard() {
           </div>
         </button>
         <button
+          onClick={() => setActiveTab('ai')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'ai' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            AI Assistant
+          </div>
+        </button>
+        <button
           onClick={() => setActiveTab('import')}
           className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
             activeTab === 'import' 
@@ -160,6 +174,7 @@ export default function AdminDashboard() {
       {activeTab === 'errors' && <ErrorLogsManager />}
       {activeTab === 'users' && <UsersManager />}
       {activeTab === 'import' && <DataImporter />}
+      {activeTab === 'ai' && <AdminAI />}
     </div>
   );
 }

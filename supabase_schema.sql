@@ -41,32 +41,31 @@ ALTER TABLE resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 
--- 4. RLS Policies for categories
+-- 5. RLS Policies for resources
+-- Public can read resources
+CREATE POLICY "Public can view resources" ON resources
+  FOR SELECT USING (true);
+
+-- Authenticated users (admins) can do everything
+CREATE POLICY "Admins can manage resources" ON resources
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- 6. RLS Policies for categories
 -- Public can read categories
 CREATE POLICY "Public can view categories" ON categories
   FOR SELECT USING (true);
 
--- Admins can do everything
-CREATE POLICY "Admins have full access to categories" ON categories
+-- Authenticated users (admins) can do everything
+CREATE POLICY "Admins can manage categories" ON categories
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- 5. RLS Policies for resources
--- Public can read active or needs_verification resources (not temporarily_closed)
-CREATE POLICY "Public can view non-closed resources" ON resources
-  FOR SELECT USING (status != 'temporarily_closed');
-
--- Admins can do everything (assuming service_role or specific admin check)
--- For this simple app, we'll allow authenticated users (admins) full access
-CREATE POLICY "Admins have full access to resources" ON resources
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
-
--- 5. RLS Policies for reports
+-- 7. RLS Policies for reports
 -- Public can insert reports
 CREATE POLICY "Public can submit reports" ON reports
   FOR INSERT WITH CHECK (true);
 
--- Admins can view and update reports
-CREATE POLICY "Admins have full access to reports" ON reports
+-- Authenticated users (admins) can view and update reports
+CREATE POLICY "Admins can manage reports" ON reports
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- 6. Indexes for performance
