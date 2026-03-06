@@ -413,7 +413,7 @@ export default function AdminAI() {
             <Bot className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-black text-zinc-900 tracking-tight">Admin AI Assistant</h2>
+            <h2 className="text-lg font-black text-zinc-900 tracking-tight">Intelligence</h2>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Powered by Gemini 3.1 Pro</span>

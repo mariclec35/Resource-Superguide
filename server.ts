@@ -28,40 +28,48 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
   try {
     const adminAccounts = [
       { email: "rosesroses1212@gmail.com", password: "Lovechris*1212" },
-      { email: "mariclec35@gmail.com", password: "Lovechris*1212" } // Added user's email as admin
+      { email: "mariclec35@gmail.com", password: "Lovechris*1212" }
     ];
     const logFile = "seed_results.log";
     
     fs.appendFileSync(logFile, `${new Date().toISOString()} - Seeding check started\n`);
     
-    console.log("Calling listUsers...");
     const { data, error: listError } = await supabase.auth.admin.listUsers();
-    console.log("listUsers returned", { hasData: !!data, hasError: !!listError });
     
     if (listError) {
-      const msg = `Failed to list users during seeding: ${JSON.stringify(listError)}`;
+      const msg = `Failed to list users during seeding: ${listError.message}`;
       console.error(msg);
       fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
     } else {
       const users = data.users;
-      fs.appendFileSync(logFile, `${new Date().toISOString()} - Found ${users.length} existing users\n`);
+      const existingEmails = users.map(u => u.email?.toLowerCase().trim());
+      fs.appendFileSync(logFile, `${new Date().toISOString()} - Found ${users.length} existing users: ${existingEmails.join(', ')}\n`);
+      
       for (const account of adminAccounts) {
-        const existingUser = users.find(u => u.email === account.email);
+        const targetEmail = account.email.toLowerCase().trim();
+        const existingUser = users.find(u => u.email?.toLowerCase().trim() === targetEmail);
+        
         if (!existingUser) {
-          console.log(`Creating admin user ${account.email}...`);
-          fs.appendFileSync(logFile, `${new Date().toISOString()} - Creating user ${account.email}\n`);
-          const { error: createError } = await supabase.auth.admin.createUser({
-            email: account.email,
+          console.log(`Creating admin user: ${targetEmail}`);
+          fs.appendFileSync(logFile, `${new Date().toISOString()} - Attempting to create user ${targetEmail}\n`);
+          
+          const { data: createData, error: createError } = await supabase.auth.admin.createUser({
+            email: targetEmail,
             password: account.password,
             email_confirm: true
           });
           
           if (createError) {
-            const msg = `Failed to create admin user ${account.email}: ${JSON.stringify(createError)}`;
+            // If it fails with 500, it might be a Supabase internal state issue.
+            // We'll log it more cleanly.
+            const msg = `Failed to create admin user ${targetEmail}: ${createError.message} (${createError.status})`;
             console.error(msg);
             fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+            
+            // If it failed but maybe the user actually exists (Supabase glitch), 
+            // we'll try to find it again in the next run or just skip for now.
           } else {
-            const msg = `Successfully created admin user ${account.email}`;
+            const msg = `Successfully created admin user: ${targetEmail}`;
             console.log(msg);
             fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
           }

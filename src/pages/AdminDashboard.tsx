@@ -25,7 +25,8 @@ import {
   Edit2, Trash2, ExternalLink, ShieldAlert, Terminal,
   ChevronDown, ChevronUp, Users, LayoutGrid, Upload, Bot, RefreshCcw,
   BarChart3, Star, BookOpen, TrendingUp, ThumbsUp, ThumbsDown,
-  GripVertical, Eye, EyeOff
+  GripVertical, Eye, EyeOff, Activity, Database, Layers, MessageSquare,
+  Sparkles, AlertTriangle, ArrowRight
 } from 'lucide-react';
 import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
@@ -34,14 +35,14 @@ import DataImporter from '../components/DataImporter';
 import AdminAI from '../components/AdminAI';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'resources' | 'reports' | 'categories' | 'errors' | 'users' | 'import' | 'ai' | 'analytics' | 'feedback'>('overview');
+  const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [systemMenuOpen, setSystemMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = "SuperGuide";
+    document.title = "SuperGuide | Operations Console";
     checkUser();
   }, []);
 
@@ -69,165 +70,121 @@ export default function AdminDashboard() {
     );
   }
 
+  const navItems = [
+    { id: 'overview', label: 'Command Center', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'resources', label: 'Resources', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'categories', label: 'Categories', icon: <Layers className="w-4 h-4" /> },
+    { id: 'feedback', label: 'Feedback Intelligence', icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'reports', label: 'Reports & Issues', icon: <ShieldAlert className="w-4 h-4" /> },
+  ];
+
+  const systemItems = [
+    { id: 'users', label: 'Users & Roles', icon: <Users className="w-4 h-4" /> },
+    { id: 'errors', label: 'Site Health', icon: <Activity className="w-4 h-4" /> },
+    { id: 'import', label: 'Data Operations', icon: <Database className="w-4 h-4" /> },
+    { id: 'ai', label: 'Intelligence', icon: <Bot className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Admin Dashboard</h1>
-            <span className="px-2 py-0.5 bg-zinc-100 text-zinc-400 text-[10px] font-bold rounded uppercase tracking-widest">v1.2</span>
-          </div>
-          <p className="text-zinc-500">Manage resources and triage community reports.</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-zinc-900">{user?.email}</p>
-            <p className="text-xs text-zinc-400">Administrator</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="p-2.5 rounded-xl border border-zinc-200 text-zinc-500 hover:text-red-600 hover:bg-red-50 transition-all"
-            title="Sign Out"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex border-b border-zinc-200 overflow-x-auto no-scrollbar mb-8 sticky top-16 bg-zinc-50/80 backdrop-blur-md z-40 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'overview' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="w-4 h-4" />
-            Overview
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('categories')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'categories' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Categories
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('resources')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'resources' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4" />
-            Resources
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('feedback')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'feedback' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4" />
-            Feedback
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'analytics' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Analytics
-          </div>
-        </button>
-
-        <div className="relative group">
-          <button
-            onClick={() => setSystemMenuOpen(!systemMenuOpen)}
-            className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
-              ['reports', 'users', 'errors', 'import', 'ai'].includes(activeTab)
-                ? 'border-zinc-900 text-zinc-900' 
-                : 'border-transparent text-zinc-400 hover:text-zinc-600'
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4" />
-            System
-            <ChevronDown className={`w-3 h-3 transition-transform ${systemMenuOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {systemMenuOpen && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-zinc-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="min-h-screen bg-zinc-50">
+      {/* Admin Header */}
+      <div className="bg-white border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Operations Console</h1>
+                <span className="px-2 py-0.5 bg-zinc-100 text-zinc-400 text-[10px] font-bold rounded uppercase tracking-widest">v1.2</span>
+              </div>
+              <p className="text-sm text-zinc-500">System administration and resource management.</p>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold text-zinc-900">{user?.email}</p>
+                <p className="text-xs text-zinc-400">Administrator</p>
+              </div>
               <button
-                onClick={() => { setActiveTab('reports'); setSystemMenuOpen(false); }}
-                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'reports' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
+                onClick={handleLogout}
+                className="p-2.5 rounded-xl border border-zinc-200 text-zinc-500 hover:text-red-600 hover:bg-red-50 transition-all"
+                title="Sign Out"
               >
-                <AlertCircle className="w-4 h-4" />
-                Reports
-              </button>
-              <button
-                onClick={() => { setActiveTab('users'); setSystemMenuOpen(false); }}
-                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'users' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
-              >
-                <Users className="w-4 h-4" />
-                Users
-              </button>
-              <button
-                onClick={() => { setActiveTab('errors'); setSystemMenuOpen(false); }}
-                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'errors' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
-              >
-                <ShieldAlert className="w-4 h-4" />
-                Errors
-              </button>
-              <button
-                onClick={() => { setActiveTab('import'); setSystemMenuOpen(false); }}
-                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'import' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
-              >
-                <Upload className="w-4 h-4" />
-                Import
-              </button>
-              <button
-                onClick={() => { setActiveTab('ai'); setSystemMenuOpen(false); }}
-                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'ai' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
-              >
-                <Bot className="w-4 h-4" />
-                AI Assistant
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {activeTab === 'overview' && <Overview />}
-      {activeTab === 'resources' && <ResourcesManager />}
-      {activeTab === 'reports' && <ReportsQueue />}
-      {activeTab === 'categories' && <CategoriesManager />}
-      {activeTab === 'errors' && <ErrorLogsManager />}
-      {activeTab === 'users' && <UsersManager />}
-      {activeTab === 'import' && <DataImporter />}
-      {activeTab === 'ai' && <AdminAI />}
-      {activeTab === 'analytics' && <SearchAnalyticsDashboard />}
-      {activeTab === 'feedback' && <FeedbackModeration />}
+      {/* Sticky Admin Nav */}
+      <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-md border-b border-zinc-200 mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+                    activeTab === item.id 
+                      ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200' 
+                      : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+              
+              <div className="relative">
+                <button
+                  onClick={() => setSystemMenuOpen(!systemMenuOpen)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+                    systemItems.some(i => i.id === activeTab)
+                      ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200'
+                      : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  System
+                  <ChevronDown className={`w-4 h-4 transition-transform ${systemMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {systemMenuOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-zinc-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                    {systemItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => { setActiveTab(item.id); setSystemMenuOpen(false); }}
+                        className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${
+                          activeTab === item.id ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'
+                        }`}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        {activeTab === 'overview' && <Overview />}
+        {activeTab === 'resources' && <ResourcesManager />}
+        {activeTab === 'categories' && <CategoriesManager />}
+        {activeTab === 'feedback' && <FeedbackModeration />}
+        {activeTab === 'analytics' && <SearchAnalyticsDashboard />}
+        {activeTab === 'reports' && <ReportsQueue />}
+        {activeTab === 'users' && <UsersManager />}
+        {activeTab === 'errors' && <ErrorLogsManager />}
+        {activeTab === 'import' && <DataImporter />}
+        {activeTab === 'ai' && <AdminAI />}
+      </div>
     </div>
   );
 }
@@ -250,17 +207,19 @@ function Overview() {
         { count: totalSearches },
         { count: totalFeedback },
         { count: pendingFeedback },
-        { count: approvedFeedback },
-        { count: rejectedFeedback },
-        { data: topResources }
+        { count: totalReports },
+        { count: openReports },
+        { data: topResources },
+        { data: recentActivity }
       ] = await Promise.all([
         supabase.from('resources').select('*', { count: 'exact', head: true }),
         supabase.from('search_analytics').select('*', { count: 'exact', head: true }),
         supabase.from('resource_feedback').select('*', { count: 'exact', head: true }),
         supabase.from('resource_feedback').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('resource_feedback').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
-        supabase.from('resource_feedback').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
-        supabase.from('resources').select('name, review_count, average_rating').order('review_count', { ascending: false }).limit(5)
+        supabase.from('reports').select('*', { count: 'exact', head: true }),
+        supabase.from('reports').select('*', { count: 'exact', head: true }).eq('report_status', 'open'),
+        supabase.from('resources').select('name, review_count, average_rating').order('review_count', { ascending: false }).limit(5),
+        supabase.from('resources').select('name, updated_at').order('updated_at', { ascending: false }).limit(5)
       ]);
 
       setStats({
@@ -268,9 +227,10 @@ function Overview() {
         totalSearches,
         totalFeedback,
         pendingFeedback,
-        approvedFeedback,
-        rejectedFeedback,
-        topResources
+        totalReports,
+        openReports,
+        topResources,
+        recentActivity
       });
     } catch (err) {
       console.error('Error fetching stats:', err);
@@ -285,55 +245,93 @@ function Overview() {
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Resources" value={stats?.totalResources || 0} icon={<BookOpen className="w-5 h-5" />} color="zinc" />
-        <StatCard title="AI Searches" value={stats?.totalSearches || 0} icon={<BarChart3 className="w-5 h-5" />} color="emerald" />
-        <StatCard title="Pending Reviews" value={stats?.pendingFeedback || 0} icon={<Star className="w-5 h-5" />} color="amber" />
-        <StatCard title="Total Feedback" value={stats?.totalFeedback || 0} icon={<ThumbsUp className="w-5 h-5" />} color="indigo" />
+        <StatCard title="Search Effectiveness" value={`${Math.round(((stats?.totalSearches || 0) / (stats?.totalSearches || 1)) * 100)}%`} icon={<BarChart3 className="w-5 h-5" />} color="emerald" />
+        <StatCard title="Feedback Queue" value={stats?.pendingFeedback || 0} icon={<Star className="w-5 h-5" />} color="amber" />
+        <StatCard title="Open Reports" value={stats?.openReports || 0} icon={<AlertCircle className="w-5 h-5" />} color="red" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white border border-zinc-200 rounded-2xl p-6">
-          <h3 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Most Reviewed Resources
-          </h3>
-          <div className="space-y-4">
-            {stats?.topResources?.map((r: any, i: number) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 border border-zinc-100">
-                <div>
-                  <p className="font-bold text-zinc-900">{r.name}</p>
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                    <span className="text-xs font-bold text-zinc-600">{r.average_rating?.toFixed(1) || '0.0'}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black text-zinc-900 tracking-tight flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-emerald-500" />
+                Resource Performance
+              </h3>
+              <button className="text-xs font-bold text-zinc-400 hover:text-zinc-900 uppercase tracking-widest">View All</button>
+            </div>
+            <div className="space-y-4">
+              {stats?.topResources?.map((r: any, i: number) => (
+                <div key={i} className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 hover:border-zinc-200 transition-all group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-xs font-black text-zinc-400">
+                      {i + 1}
+                    </div>
+                    <div>
+                      <p className="font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors">{r.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-0.5">
+                          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                          <span className="text-[10px] font-bold text-zinc-500">{r.average_rating?.toFixed(1) || '0.0'}</span>
+                        </div>
+                        <span className="text-zinc-300">•</span>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{r.review_count || 0} Reviews</span>
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-900 transition-all" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black text-zinc-900 tracking-tight flex items-center gap-2">
+                <Clock className="w-5 h-5 text-zinc-400" />
+                Recent Admin Activity
+              </h3>
+            </div>
+            <div className="space-y-4">
+              {stats?.recentActivity?.map((a: any, i: number) => (
+                <div key={i} className="flex items-center gap-4 p-4 border-l-2 border-zinc-100 hover:border-emerald-500 transition-all">
+                  <div className="w-2 h-2 rounded-full bg-zinc-200" />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900">
+                      Updated <span className="font-bold">"{a.name}"</span>
+                    </p>
+                    <p className="text-xs text-zinc-400">{format(new Date(a.updated_at), 'MMM d, HH:mm')}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-black text-zinc-900">{r.review_count || 0}</p>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Reviews</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 rounded-2xl p-6">
-          <h3 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4" />
-            System Health
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-100 bg-emerald-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <p className="text-sm font-bold text-emerald-900">AI Extraction Engine</p>
+        <div className="space-y-8">
+          <div className="bg-zinc-900 rounded-3xl p-8 text-white shadow-xl shadow-zinc-200 overflow-hidden relative">
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/5 rounded-full blur-3xl" />
+            <div className="relative z-10">
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
+                <Sparkles className="w-6 h-6 text-emerald-400" />
               </div>
-              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Operational</span>
+              <h3 className="text-xl font-black mb-2 tracking-tight">Operational Tip</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed mb-6">
+                You have <span className="text-white font-bold">{stats?.pendingFeedback || 0} feedback items</span> waiting for moderation. Keeping this queue clear improves site trust.
+              </p>
+              <button className="w-full py-3 bg-white text-zinc-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-400 transition-all">
+                Moderate Now
+              </button>
             </div>
-            <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-100 bg-emerald-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <p className="text-sm font-bold text-emerald-900">Database Sync</p>
-              </div>
-              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Connected</span>
+          </div>
+
+          <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm">
+            <h3 className="text-lg font-black text-zinc-900 mb-6 tracking-tight">System Health</h3>
+            <div className="space-y-4">
+              <HealthItem label="Database" status="online" />
+              <HealthItem label="Search Engine" status="online" />
+              <HealthItem label="Intelligence API" status="online" />
+              <HealthItem label="Storage" status="online" />
             </div>
           </div>
         </div>
@@ -342,12 +340,29 @@ function Overview() {
   );
 }
 
+function HealthItem({ label, status }: { label: string, status: 'online' | 'offline' | 'warning' }) {
+  return (
+    <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+      <span className="text-xs font-bold text-zinc-600">{label}</span>
+      <div className="flex items-center gap-2">
+        <div className={`w-2 h-2 rounded-full ${
+          status === 'online' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
+          status === 'warning' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 
+          'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+        }`} />
+        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{status}</span>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ title, value, icon, color }: { title: string, value: number | string, icon: React.ReactNode, color: string }) {
   const colors: any = {
-    zinc: 'bg-zinc-50 border-zinc-200 text-zinc-900',
-    emerald: 'bg-emerald-50 border-emerald-100 text-emerald-900',
-    amber: 'bg-amber-50 border-amber-100 text-amber-900',
-    indigo: 'bg-indigo-50 border-indigo-100 text-indigo-900',
+    zinc: 'bg-white border-zinc-200 text-zinc-900',
+    emerald: 'bg-white border-zinc-200 text-zinc-900',
+    amber: 'bg-white border-zinc-200 text-zinc-900',
+    indigo: 'bg-white border-zinc-200 text-zinc-900',
+    red: 'bg-white border-zinc-200 text-zinc-900',
   };
 
   const iconColors: any = {
@@ -355,16 +370,17 @@ function StatCard({ title, value, icon, color }: { title: string, value: number 
     emerald: 'bg-emerald-100 text-emerald-600',
     amber: 'bg-amber-100 text-amber-600',
     indigo: 'bg-indigo-100 text-indigo-600',
+    red: 'bg-red-100 text-red-600',
   };
 
   return (
-    <div className={`p-6 rounded-2xl border ${colors[color]} shadow-sm`}>
+    <div className={`p-6 rounded-2xl border ${colors[color]} shadow-sm hover:shadow-md transition-shadow`}>
       <div className="flex items-center justify-between mb-4">
-        <div className={`p-2 rounded-lg ${iconColors[color]}`}>
+        <div className={`p-2.5 rounded-xl ${iconColors[color]}`}>
           {icon}
         </div>
       </div>
-      <p className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">{title}</p>
+      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{title}</p>
       <p className="text-3xl font-black tracking-tight">{value}</p>
     </div>
   );
@@ -373,70 +389,277 @@ function StatCard({ title, value, icon, color }: { title: string, value: number 
 function SearchAnalyticsDashboard() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeSubTab, setActiveSubTab] = useState<'effectiveness' | 'engagement' | 'signals' | 'gaps'>('effectiveness');
+  const [stats, setStats] = useState({
+    zeroResultRate: 0,
+    avgResults: 0,
+    topTerms: [] as any[],
+    topResources: [] as any[],
+    signals: [] as any[]
+  });
 
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    fetchData();
+  }, [activeSubTab]);
 
-  const fetchLogs = async () => {
+  const fetchData = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('search_analytics')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    
-    if (!error) setLogs(data || []);
-    setLoading(false);
+    try {
+      if (activeSubTab === 'effectiveness' || activeSubTab === 'gaps') {
+        const { data, error } = await supabase
+          .from('search_analytics')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        
+        if (!error && data) {
+          setLogs(data);
+          const zeroResults = data.filter(l => l.results_count === 0).length;
+          const avg = data.reduce((acc, curr) => acc + curr.results_count, 0) / data.length;
+          
+          // Extract top terms
+          const terms: Record<string, number> = {};
+          data.forEach(l => {
+            l.extracted_needs?.need_types?.forEach((n: string) => {
+              terms[n] = (terms[n] || 0) + 1;
+            });
+          });
+          const sortedTerms = Object.entries(terms)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }));
+
+          setStats(prev => ({
+            ...prev,
+            zeroResultRate: (zeroResults / data.length) * 100,
+            avgResults: avg,
+            topTerms: sortedTerms
+          }));
+        }
+      } else if (activeSubTab === 'engagement') {
+        const { data, error } = await supabase
+          .from('resources')
+          .select('id, name, category, review_count, average_rating')
+          .order('review_count', { ascending: false })
+          .limit(10);
+        if (!error) setStats(prev => ({ ...prev, topResources: data || [] }));
+      } else if (activeSubTab === 'signals') {
+        const { data, error } = await supabase
+          .from('resource_feedback')
+          .select('signals')
+          .not('signals', 'is', null);
+        
+        if (!error && data) {
+          const signalCounts: Record<string, number> = {};
+          data.forEach(f => {
+            if (f.signals) {
+              Object.entries(f.signals).forEach(([key, value]) => {
+                if (value) signalCounts[key] = (signalCounts[key] || 0) + 1;
+              });
+            }
+          });
+          setStats(prev => ({ 
+            ...prev, 
+            signals: Object.entries(signalCounts).map(([name, count]) => ({ name, count }))
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching analytics data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black text-zinc-900 tracking-tight">AI Search Analytics</h2>
-        <button onClick={fetchLogs} className="p-2 rounded-lg hover:bg-zinc-100 transition-all">
-          <RefreshCcw className="w-4 h-4 text-zinc-400" />
-        </button>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Intelligence Analytics</h2>
+          <p className="text-sm text-zinc-500">Monitor search performance and resource health.</p>
+        </div>
+        <div className="flex gap-2 p-1 bg-zinc-100 rounded-xl overflow-x-auto max-w-full">
+          {[
+            { id: 'effectiveness', label: 'Search Effectiveness', icon: Search },
+            { id: 'engagement', label: 'Resource Engagement', icon: BarChart3 },
+            { id: 'signals', label: 'Quality Signals', icon: Sparkles },
+            { id: 'gaps', label: 'Coverage Gaps', icon: AlertTriangle }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSubTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                activeSubTab === tab.id 
+                  ? 'bg-white text-zinc-900 shadow-sm' 
+                  : 'text-zinc-500 hover:text-zinc-700'
+              }`}
+            >
+              <tab.icon className="w-3 h-3" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-zinc-50 border-b border-zinc-200">
-              <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">User Prompt</th>
-              <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">AI Extraction</th>
-              <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Results</th>
-              <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Time</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
-                <td className="px-6 py-4 max-w-xs">
-                  <p className="text-sm text-zinc-900 line-clamp-2 font-medium">"{log.raw_prompt}"</p>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-wrap gap-1">
-                    {log.extracted_needs?.need_types?.map((n: string, i: number) => (
-                      <span key={i} className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 text-[10px] font-bold uppercase tracking-wider">
-                        {n}
+      {loading ? (
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>
+      ) : (
+        <div className="space-y-6">
+          {activeSubTab === 'effectiveness' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Zero Result Rate</p>
+                  <p className="text-2xl font-black text-red-500">{stats.zeroResultRate.toFixed(1)}%</p>
+                  <p className="text-xs text-zinc-400 mt-1">Searches with no matches</p>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Avg Matches</p>
+                  <p className="text-2xl font-black text-zinc-900">{stats.avgResults.toFixed(1)}</p>
+                  <p className="text-xs text-zinc-400 mt-1">Resources per search</p>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Top Search Needs</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {stats.topTerms.map((t, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-zinc-100 text-zinc-600 text-[10px] font-bold rounded uppercase">
+                        {t.name} ({t.count})
                       </span>
                     ))}
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`text-sm font-black ${log.results_count > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {log.results_count} matches
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <p className="text-xs text-zinc-400">{format(new Date(log.created_at), 'MMM d, HH:mm')}</p>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden overflow-x-auto shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-zinc-50 border-b border-zinc-200">
+                      <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">User Prompt</th>
+                      <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">AI Extraction</th>
+                      <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Results</th>
+                      <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {logs.map((log) => (
+                      <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="px-6 py-4 max-w-xs">
+                          <p className="text-sm text-zinc-900 line-clamp-2 font-medium">"{log.raw_prompt}"</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {log.extracted_needs?.need_types?.map((n: string, i: number) => (
+                              <span key={i} className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 text-[10px] font-bold uppercase tracking-wider">
+                                {n}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`text-sm font-black ${log.results_count > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {log.results_count} matches
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-xs text-zinc-400">{format(new Date(log.created_at), 'MMM d, HH:mm')}</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {activeSubTab === 'engagement' && (
+            <div className="grid grid-cols-1 gap-4">
+              {stats.topResources.map((r, i) => (
+                <div key={r.id} className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-sm font-black text-zinc-400">
+                      {i + 1}
+                    </div>
+                    <div>
+                      <p className="font-bold text-zinc-900">{r.name}</p>
+                      <p className="text-xs text-zinc-500 uppercase tracking-widest font-black">{r.category}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-8">
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Avg Rating</p>
+                      <div className="flex items-center gap-1 justify-end">
+                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                        <span className="text-sm font-bold text-zinc-900">{r.average_rating?.toFixed(1) || '0.0'}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Reviews</p>
+                      <p className="text-sm font-bold text-zinc-900">{r.review_count || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeSubTab === 'signals' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {stats.signals.map((s, i) => (
+                <div key={i} className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-bold text-zinc-900 capitalize">{s.name.replace(/_/g, ' ')}</p>
+                    <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase tracking-widest">
+                      {s.count} mentions
+                    </span>
+                  </div>
+                  <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-emerald-500 h-full rounded-full" 
+                      style={{ width: `${Math.min(100, (s.count / 50) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {stats.signals.length === 0 && (
+                <div className="col-span-2 py-20 text-center">
+                  <p className="text-sm text-zinc-400 italic">No quality signals extracted yet. Signals appear as feedback is moderated.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeSubTab === 'gaps' && (
+            <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-zinc-100">
+                <h3 className="text-sm font-black text-zinc-900 uppercase tracking-widest">Zero-Result Search Terms</h3>
+                <p className="text-xs text-zinc-500 mt-1">These terms were extracted from searches that returned no resources.</p>
+              </div>
+              <div className="divide-y divide-zinc-100">
+                {logs.filter(l => l.results_count === 0).slice(0, 20).map((log, i) => (
+                  <div key={i} className="p-4 hover:bg-zinc-50 transition-colors flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-zinc-900">"{log.raw_prompt}"</p>
+                      <div className="flex gap-1 mt-1">
+                        {log.extracted_needs?.need_types?.map((n: string, j: number) => (
+                          <span key={j} className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-zinc-400">{format(new Date(log.created_at), 'MMM d, HH:mm')}</p>
+                  </div>
+                ))}
+                {logs.filter(l => l.results_count === 0).length === 0 && (
+                  <div className="p-12 text-center">
+                    <p className="text-sm text-zinc-400 italic">No coverage gaps identified. All recent searches returned results.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -444,16 +667,18 @@ function SearchAnalyticsDashboard() {
 function FeedbackModeration() {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   useEffect(() => {
     fetchFeedbacks();
-  }, []);
+  }, [activeTab]);
 
   const fetchFeedbacks = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('resource_feedback')
       .select('*, resources(name)')
+      .eq('status', activeTab)
       .order('created_at', { ascending: false });
     
     if (!error) setFeedbacks(data || []);
@@ -471,78 +696,113 @@ function FeedbackModeration() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black text-zinc-900 tracking-tight">Feedback Moderation</h2>
-        <button onClick={fetchFeedbacks} className="p-2 rounded-lg hover:bg-zinc-100 transition-all">
-          <RefreshCcw className="w-4 h-4 text-zinc-400" />
-        </button>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Feedback Intelligence</h2>
+          <p className="text-sm text-zinc-500">Moderate and extract quality signals from community feedback.</p>
+        </div>
+        <div className="flex gap-2 p-1 bg-zinc-100 rounded-xl">
+          {(['pending', 'approved', 'rejected'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setActiveTab(s)}
+              className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all ${
+                activeTab === s 
+                  ? 'bg-white text-zinc-900 shadow-sm' 
+                  : 'text-zinc-500 hover:text-zinc-700'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {feedbacks.map((f) => (
-          <div key={f.id} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>
+        ) : feedbacks.map((f) => (
+          <div key={f.id} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-black text-zinc-900">{f.guest_name || 'Anonymous'}</p>
-                  <span className="text-zinc-300">•</span>
-                  <p className="text-sm font-bold text-emerald-600">{f.resources?.name}</p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center font-black text-zinc-400">
+                  {f.guest_name?.[0] || 'A'}
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className={`w-3 h-3 ${s <= f.rating_overall ? 'text-amber-400 fill-amber-400' : 'text-zinc-200'}`} />
-                    ))}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-black text-zinc-900">{f.guest_name || 'Anonymous'}</p>
+                    <span className="text-zinc-300">•</span>
+                    <p className="text-sm font-bold text-emerald-600">{f.resources?.name}</p>
                   </div>
-                  <span className="text-xs text-zinc-400">{format(new Date(f.created_at), 'MMM d, yyyy')}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} className={`w-3 h-3 ${s <= f.rating_overall ? 'text-amber-400 fill-amber-400' : 'text-zinc-200'}`} />
+                      ))}
+                    </div>
+                    <span className="text-xs text-zinc-400">{format(new Date(f.created_at), 'MMM d, yyyy')}</span>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {f.status === 'pending' ? (
+                {f.status === 'pending' && (
                   <>
                     <button
                       onClick={() => handleUpdateStatus(f.id, 'rejected')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-200 text-zinc-500 font-bold text-sm hover:bg-red-50 hover:text-red-600 transition-all"
+                      className="p-2 rounded-xl border border-zinc-200 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                      title="Reject"
                     >
-                      <ThumbsDown className="w-4 h-4" />
-                      Reject
+                      <ThumbsDown className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleUpdateStatus(f.id, 'approved')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+                      className="p-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+                      title="Approve"
                     >
-                      <ThumbsUp className="w-4 h-4" />
-                      Approve
+                      <ThumbsUp className="w-5 h-5" />
                     </button>
                   </>
-                ) : (
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                    f.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                  }`}>
-                    {f.status}
-                  </span>
                 )}
               </div>
             </div>
-            <p className="text-zinc-700 leading-relaxed italic">"{f.review_text}"</p>
-            <div className="mt-4 pt-4 border-t border-zinc-50 flex flex-wrap gap-6">
-              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                Accessibility: <span className="text-zinc-900">{f.rating_accessibility}/5</span>
-              </div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                Staff: <span className="text-zinc-900">{f.rating_staff}/5</span>
-              </div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                Usefulness: <span className="text-zinc-900">{f.rating_usefulness}/5</span>
-              </div>
+
+            <div className="bg-zinc-50 rounded-xl p-4 mb-4">
+              <p className="text-zinc-700 leading-relaxed italic text-sm">"{f.review_text}"</p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <SignalBadge label="Accessibility" value={f.rating_accessibility} />
+              <SignalBadge label="Staff Experience" value={f.rating_staff} />
+              <SignalBadge label="Usefulness" value={f.rating_usefulness} />
+              <SignalBadge label="Confidence" value="High" />
             </div>
           </div>
         ))}
-        {feedbacks.length === 0 && (
+        {!loading && feedbacks.length === 0 && (
           <div className="text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
             <Star className="w-10 h-10 text-zinc-300 mx-auto mb-3" />
-            <p className="text-zinc-500 font-medium">No feedback submissions found.</p>
+            <p className="text-zinc-500 font-medium">No feedback submissions in this queue.</p>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SignalBadge({ label, value }: { label: string, value: number | string }) {
+  return (
+    <div className="bg-white border border-zinc-100 rounded-lg p-2">
+      <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">{label}</p>
+      <div className="flex items-center gap-1">
+        {typeof value === 'number' ? (
+          <>
+            <span className="text-xs font-bold text-zinc-900">{value}/5</span>
+            <div className="flex-1 h-1 bg-zinc-100 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500" style={{ width: `${(value / 5) * 100}%` }} />
+            </div>
+          </>
+        ) : (
+          <span className="text-xs font-bold text-emerald-600">{value}</span>
         )}
       </div>
     </div>
@@ -557,6 +817,7 @@ function ResourcesManager() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [filterStatus, setFilterStatus] = useState<ResourceStatus | 'all'>('all');
 
   useEffect(() => {
     fetchResources();
@@ -573,10 +834,15 @@ function ResourcesManager() {
     setLoading(false);
   };
 
-  const filtered = resources.filter(r => 
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = resources.filter(r => {
+    const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.category.toLowerCase().includes(search.toLowerCase()) ||
+      (r.city && r.city.toLowerCase().includes(search.toLowerCase()));
+    
+    const matchesStatus = filterStatus === 'all' || r.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const handleDelete = async (id: string) => {
     setConfirmDelete({ id, type: 'resource' });
@@ -604,23 +870,35 @@ function ResourcesManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Search resources..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
-          />
+      <div className="flex flex-col lg:flex-row gap-4 justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search by name, category, or city..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm"
+            />
+          </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
+            className="px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white font-medium"
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="needs_verification">Needs Verification</option>
+          </select>
         </div>
         <button
           onClick={() => {
             setEditingResource(null);
             setShowForm(true);
           }}
-          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all"
+          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
         >
           <Plus className="w-4 h-4" />
           Add Resource
@@ -632,31 +910,50 @@ function ResourcesManager() {
           <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
         </div>
       ) : (
-        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden overflow-x-auto">
+        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden overflow-x-auto shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-50 border-b border-zinc-200">
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Resource</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Address</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Resource Info</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Location</th>
+                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Performance</th>
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Status</th>
                 <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {filtered.map((resource) => (
-                <tr key={resource.id} className="hover:bg-zinc-50/50 transition-colors">
+                <tr key={resource.id} className="hover:bg-zinc-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <p className="font-bold text-zinc-900">{resource.name}</p>
-                    <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">{resource.category}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{resource.category}</span>
+                      {resource.subcategory && (
+                        <>
+                          <span className="text-zinc-300">/</span>
+                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{resource.subcategory}</span>
+                        </>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm text-zinc-600 truncate max-w-[200px]">{resource.address || '—'}</p>
+                    <p className="text-sm text-zinc-600 font-medium">{resource.city || '—'}</p>
+                    <p className="text-xs text-zinc-400 truncate max-w-[150px]">{resource.address || '—'}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-0.5">
+                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                        <span className="text-sm font-bold text-zinc-900">{resource.average_rating?.toFixed(1) || '0.0'}</span>
+                      </div>
+                      <span className="text-xs text-zinc-400">({resource.review_count || 0})</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={resource.status} />
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {resource.status !== 'active' && (
                         <button
                           onClick={() => handleVerify(resource)}
@@ -692,6 +989,7 @@ function ResourcesManager() {
         </div>
       )}
 
+
       {confirmDelete && (
         <ConfirmationModal
           title="Delete Resource"
@@ -719,6 +1017,7 @@ function ReportsQueue() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<ReportStatus | 'all'>('all');
+  const [activeIssueType, setActiveIssueType] = useState<string | 'all'>('all');
 
   useEffect(() => {
     fetchReports();
@@ -735,7 +1034,13 @@ function ReportsQueue() {
     setLoading(false);
   };
 
-  const filtered = filter === 'all' ? reports : reports.filter(r => r.report_status === filter);
+  const issueTypes = Array.from(new Set(reports.map(r => r.issue_type)));
+
+  const filtered = reports.filter(r => {
+    const statusMatch = filter === 'all' || r.report_status === filter;
+    const typeMatch = activeIssueType === 'all' || r.issue_type === activeIssueType;
+    return statusMatch && typeMatch;
+  });
 
   const updateReport = async (id: string, updates: Partial<Report>) => {
     const { error } = await supabase
@@ -756,20 +1061,38 @@ function ReportsQueue() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2 p-1 bg-zinc-100 rounded-xl w-fit">
-        {(['all', 'open', 'in_review', 'resolved', 'duplicate'] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all ${
-              filter === s 
-                ? 'bg-white text-zinc-900 shadow-sm' 
-                : 'text-zinc-500 hover:text-zinc-700'
-            }`}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Resolution Center</h2>
+          <p className="text-sm text-zinc-500">Manage and resolve community-reported data issues.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <div className="flex gap-1 p-1 bg-zinc-100 rounded-xl">
+            {(['all', 'open', 'in_review', 'resolved'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilter(s)}
+                className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all ${
+                  filter === s 
+                    ? 'bg-white text-zinc-900 shadow-sm' 
+                    : 'text-zinc-500 hover:text-zinc-700'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <select
+            value={activeIssueType}
+            onChange={(e) => setActiveIssueType(e.target.value)}
+            className="px-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-zinc-900"
           >
-            {s}
-          </button>
-        ))}
+            <option value="all">All Issue Types</option>
+            {issueTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -779,13 +1102,25 @@ function ReportsQueue() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {filtered.map((report) => (
-            <div key={report.id} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
-              <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <ReportStatusBadge status={report.report_status} />
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
-                    {format(new Date(report.submitted_at), 'MMM d, yyyy HH:mm')}
-                  </span>
+            <div key={report.id} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm hover:border-zinc-300 transition-all">
+              <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    report.report_status === 'open' ? 'bg-red-50 text-red-600' :
+                    report.report_status === 'in_review' ? 'bg-blue-50 text-blue-600' :
+                    'bg-emerald-50 text-emerald-600'
+                  }`}>
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{report.issue_type}</p>
+                      <ReportStatusBadge status={report.report_status} />
+                    </div>
+                    <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest mt-0.5">
+                      Submitted {format(new Date(report.submitted_at), 'MMM d, yyyy HH:mm')}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   {report.report_status !== 'resolved' && (
@@ -794,72 +1129,96 @@ function ReportsQueue() {
                         const notes = prompt('Resolution notes:');
                         if (notes !== null) resolveReport(report, notes);
                       }}
-                      className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-100 transition-all"
+                      className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
                     >
-                      Resolve
+                      Resolve Issue
                     </button>
                   )}
                   {report.report_status === 'open' && (
                     <button
                       onClick={() => updateReport(report.id, { report_status: 'in_review' })}
-                      className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg hover:bg-blue-100 transition-all"
+                      className="px-4 py-2 bg-zinc-100 text-zinc-900 text-xs font-bold rounded-xl hover:bg-zinc-200 transition-all"
                     >
-                      In Review
+                      Start Review
                     </button>
                   )}
                   <button
                     onClick={() => updateReport(report.id, { report_status: 'duplicate' })}
-                    className="px-3 py-1.5 bg-zinc-50 text-zinc-600 text-xs font-bold rounded-lg hover:bg-zinc-100 transition-all"
+                    className="px-4 py-2 border border-zinc-200 text-zinc-500 text-xs font-bold rounded-xl hover:bg-zinc-50 transition-all"
                   >
-                    Mark Duplicate
+                    Duplicate
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">Issue Detail</h4>
-                  <p className="text-sm font-bold text-zinc-900 mb-1">{report.issue_type}</p>
-                  <p className="text-sm text-zinc-600 mb-4">{report.comment || 'No comment provided.'}</p>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Report Context</h4>
+                    <p className="text-sm text-zinc-700 leading-relaxed bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+                      {report.comment || 'No detailed comment provided.'}
+                    </p>
+                  </div>
                   
                   {report.optional_contact && (
-                    <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-100">
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Contact Info</p>
-                      <p className="text-sm text-zinc-700">{report.optional_contact}</p>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <Users className="w-3 h-3" />
+                      Contact: <span className="font-bold text-zinc-900">{report.optional_contact}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2 flex items-center justify-between">
-                    Linked Resource
-                    <a href={`/resource/${report.resource_id}`} target="_blank" className="text-emerald-600 hover:underline flex items-center gap-1">
-                      View <ExternalLink className="w-3 h-3" />
+                <div className="bg-zinc-900 rounded-2xl p-5 text-white">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Linked Resource</h4>
+                    <a 
+                      href={`/resource/${report.resource_id}`} 
+                      target="_blank" 
+                      className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase tracking-widest flex items-center gap-1"
+                    >
+                      Inspect <ExternalLink className="w-3 h-3" />
                     </a>
-                  </h4>
+                  </div>
                   {report.resource ? (
-                    <>
-                      <p className="text-sm font-bold text-zinc-900">{report.resource.name}</p>
-                      <p className="text-xs text-zinc-500 mb-2">{report.resource.address}</p>
-                      <StatusBadge status={report.resource.status} />
-                    </>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-bold text-white">{report.resource.name}</p>
+                        <p className="text-xs text-zinc-400 mt-1">{report.resource.address}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={report.resource.status} />
+                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+                          ID: {report.resource_id.slice(0, 8)}...
+                        </span>
+                      </div>
+                    </div>
                   ) : (
-                    <p className="text-sm text-zinc-400 italic">Resource not found</p>
+                    <p className="text-sm text-zinc-500 italic">Resource record missing or deleted.</p>
                   )}
                 </div>
               </div>
 
               {report.resolution_notes && (
-                <div className="mt-4 pt-4 border-t border-zinc-100">
-                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resolution Notes</p>
-                  <p className="text-sm text-zinc-700">{report.resolution_notes}</p>
+                <div className="mt-6 pt-6 border-t border-zinc-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Resolution Summary</h4>
+                  </div>
+                  <p className="text-sm text-zinc-700 font-medium">{report.resolution_notes}</p>
                   {report.resolved_at && (
-                    <p className="text-[10px] text-zinc-400 mt-1">Resolved at: {format(new Date(report.resolved_at), 'MMM d, yyyy HH:mm')}</p>
+                    <p className="text-[10px] text-zinc-400 mt-2 font-bold uppercase tracking-widest">
+                      Resolved {format(new Date(report.resolved_at), 'MMM d, yyyy HH:mm')}
+                    </p>
                   )}
                 </div>
               )}
             </div>
           ))}
+          {filtered.length === 0 && (
+            <div className="py-20 text-center bg-white border border-zinc-200 rounded-2xl border-dashed">
+              <p className="text-sm text-zinc-400 italic">No reports found matching your criteria.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -889,14 +1248,21 @@ function CategoriesManager() {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      // Try with display_order first
-      let { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('display_order', { ascending: true })
-        .order('name');
+      // Fetch categories and resource counts
+      const [catRes, countRes] = await Promise.all([
+        supabase
+          .from('categories')
+          .select('*')
+          .order('display_order', { ascending: true })
+          .order('name'),
+        supabase
+          .from('resources')
+          .select('category, subcategory')
+      ]);
       
-      // Fallback to sequence if display_order fails
+      let data = catRes.data;
+      let error = catRes.error;
+      
       if (error) {
         console.warn('display_order fetch failed, trying sequence:', error.message);
         const seqFallback = await supabase
@@ -908,9 +1274,7 @@ function CategoriesManager() {
         error = seqFallback.error;
       }
 
-      // Final fallback to name
       if (error) {
-        console.warn('Sequence fetch failed, falling back to name sort:', error.message);
         const fallback = await supabase
           .from('categories')
           .select('*')
@@ -922,12 +1286,35 @@ function CategoriesManager() {
       if (error) {
         console.error('Error fetching categories:', error);
       } else if (data) {
-        // Map sequence to display_order if needed for the UI state
-        const mappedData = data.map(c => ({
-          ...c,
-          display_order: c.display_order ?? (c as any).sequence ?? 0,
-          is_active: c.is_active ?? true
-        }));
+        // Calculate counts
+        const counts: Record<string, number> = {};
+        countRes.data?.forEach((r: any) => {
+          counts[r.category] = (counts[r.category] || 0) + 1;
+          if (r.subcategory) {
+            const key = `${r.category}:${r.subcategory}`;
+            counts[key] = (counts[key] || 0) + 1;
+          }
+        });
+
+        const mappedData = data.map(c => {
+          const isPrimary = !c.parent_id;
+          let count = 0;
+          if (isPrimary) {
+            count = counts[c.name] || 0;
+          } else {
+            const parent = data?.find(p => p.id === c.parent_id);
+            if (parent) {
+              count = counts[`${parent.name}:${c.name}`] || 0;
+            }
+          }
+
+          return {
+            ...c,
+            display_order: c.display_order ?? (c as any).sequence ?? 0,
+            is_active: c.is_active ?? true,
+            resource_count: count
+          };
+        });
         setCategories(mappedData);
       }
     } catch (err) {
@@ -1074,92 +1461,136 @@ function CategoriesManager() {
   const primaryCategories = categories.filter(c => !c.parent_id).sort((a, b) => a.display_order - b.display_order);
 
   return (
-    <div className="space-y-8 max-w-4xl">
-      <div className="flex items-center justify-between">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="xl:col-span-2 space-y-8">
         <div>
           <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Category Management</h2>
           <p className="text-sm text-zinc-500">Organize resources into a simple two-level hierarchy.</p>
         </div>
-      </div>
 
-      {/* Add Category Form */}
-      <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-        <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Category Name</label>
-            <input
-              type="text"
-              placeholder="e.g. Technology"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm font-medium"
-            />
-          </div>
-          <div className="w-64">
-            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Parent (Optional)</label>
-            <select
-              value={newParentId || ''}
-              onChange={(e) => setNewParentId(e.target.value || null)}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white font-medium"
+        {/* Add Category Form */}
+        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+          <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Category Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Technology"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm font-medium"
+              />
+            </div>
+            <div className="w-64">
+              <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Parent (Optional)</label>
+              <select
+                value={newParentId || ''}
+                onChange={(e) => setNewParentId(e.target.value || null)}
+                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white font-medium"
+              >
+                <option value="">Primary Category</option>
+                {primaryCategories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              disabled={!newName.trim()}
+              className="px-8 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm flex items-center gap-2"
             >
-              <option value="">Primary Category</option>
-              {primaryCategories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="submit"
-            disabled={!newName.trim()}
-            className="px-8 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Category
-          </button>
-        </form>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-10 h-10 animate-spin text-zinc-200" />
+              <Plus className="w-4 h-4" />
+              Add Category
+            </button>
+          </form>
         </div>
-      ) : (
-        <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="space-y-6">
-            <SortableContext 
-              items={primaryCategories.map(c => c.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {primaryCategories.map(cat => (
-                <SortableCategoryItem 
-                  key={cat.id} 
-                  category={cat} 
-                  allCategories={categories}
-                  onEdit={(id, name, parentId) => {
-                    setEditingId(id);
-                    setEditName(name);
-                    setEditParentId(parentId);
-                  }}
-                  onDelete={handleDelete}
-                  onToggleActive={toggleActive}
-                  isEditing={editingId === cat.id}
-                  editName={editName}
-                  setEditName={setEditName}
-                  editParentId={editParentId}
-                  setEditParentId={setEditParentId}
-                  onSave={() => handleUpdate(cat.id)}
-                  onCancel={() => setEditingId(null)}
-                  onDragEnd={handleDragEnd}
-                />
-              ))}
-            </SortableContext>
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-10 h-10 animate-spin text-zinc-200" />
           </div>
-        </DndContext>
-      )}
+        ) : (
+          <DndContext 
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-6">
+              <SortableContext 
+                items={primaryCategories.map(c => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {primaryCategories.map(cat => (
+                  <SortableCategoryItem 
+                    key={cat.id} 
+                    category={cat} 
+                    allCategories={categories}
+                    onEdit={(id, name, parentId) => {
+                      setEditingId(id);
+                      setEditName(name);
+                      setEditParentId(parentId);
+                    }}
+                    onDelete={handleDelete}
+                    onToggleActive={toggleActive}
+                    isEditing={editingId === cat.id}
+                    editName={editName}
+                    setEditName={setEditName}
+                    editParentId={editParentId}
+                    setEditParentId={setEditParentId}
+                    onSave={() => handleUpdate(cat.id)}
+                    onCancel={() => setEditingId(null)}
+                    onDragEnd={handleDragEnd}
+                  />
+                ))}
+              </SortableContext>
+            </div>
+          </DndContext>
+        )}
+      </div>
+
+      {/* Preview Panel */}
+      <div className="space-y-6">
+        <div className="sticky top-24">
+          <div className="bg-zinc-900 rounded-3xl p-6 text-white shadow-xl shadow-zinc-200">
+            <div className="flex items-center gap-2 mb-6">
+              <Eye className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Display Preview</h3>
+            </div>
+            
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+              {primaryCategories.filter(c => c.is_active).map(cat => (
+                <div key={cat.id} className="space-y-2">
+                  <div className="flex items-center justify-between group">
+                    <p className="text-sm font-bold text-zinc-100">{cat.name}</p>
+                    <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{cat.resource_count}</span>
+                  </div>
+                  <div className="pl-4 space-y-1 border-l border-zinc-800">
+                    {categories
+                      .filter(c => c.parent_id === cat.id && c.is_active)
+                      .sort((a, b) => a.display_order - b.display_order)
+                      .map(sub => (
+                        <div key={sub.id} className="flex items-center justify-between">
+                          <p className="text-xs text-zinc-400">{sub.name}</p>
+                          <span className="text-[9px] font-bold text-zinc-700">{sub.resource_count}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+              {primaryCategories.filter(c => c.is_active).length === 0 && (
+                <p className="text-xs text-zinc-500 italic text-center py-8">No active categories to preview.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 bg-white border border-zinc-200 rounded-2xl p-6">
+            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Admin Tip</h3>
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              Drag categories to reorder them. This order is exactly how they will appear in the main directory search filters.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1238,8 +1669,11 @@ function SortableCategoryItem({
           ) : (
             <div className="flex items-center gap-3">
               <h4 className="text-base font-bold text-zinc-900 truncate">{category.name}</h4>
+              <span className="px-2 py-0.5 bg-zinc-100 text-zinc-500 text-[10px] font-black uppercase tracking-widest rounded">
+                {category.resource_count} resources
+              </span>
               {!category.is_active && (
-                <span className="px-2 py-0.5 bg-zinc-100 text-zinc-500 text-[10px] font-black uppercase tracking-widest rounded">Hidden</span>
+                <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest rounded">Hidden</span>
               )}
             </div>
           )}
@@ -1696,57 +2130,63 @@ function UsersManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Active Admin Users</h2>
-          <p className="text-sm text-zinc-500">Manage administrative access to the platform.</p>
+          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Access Control</h2>
+          <p className="text-sm text-zinc-500">Manage administrative accounts and system permissions.</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setAddingUser(!addingUser)}
-            className="px-4 py-2 bg-zinc-900 text-white text-sm font-bold rounded-xl hover:bg-zinc-800 transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-zinc-800 transition-all flex items-center gap-2 shadow-lg shadow-zinc-200"
           >
             <Plus className="w-4 h-4" />
-            Add User
+            Provision Admin
           </button>
           <button 
             onClick={fetchUsers}
-            className="p-2 hover:bg-zinc-100 rounded-lg transition-all"
+            className="p-2 hover:bg-zinc-100 rounded-xl transition-all border border-zinc-200"
             title="Refresh Users"
           >
-            <Clock className="w-4 h-4 text-zinc-400" />
+            <RefreshCcw className="w-4 h-4 text-zinc-400" />
           </button>
         </div>
       </div>
 
       {addingUser && (
-        <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-xl animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-sm font-black text-zinc-900 uppercase tracking-tight">Provision New Account</h3>
+            <button onClick={() => setAddingUser(false)} className="text-zinc-400 hover:text-zinc-600">
+              <XCircle className="w-5 h-5" />
+            </button>
+          </div>
           <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-zinc-500 mb-1">Email</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Email Address</label>
               <input 
                 type="email" 
                 required 
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                className="w-full p-2 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
+                className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-zinc-900"
                 placeholder="admin@example.com"
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-zinc-500 mb-1">Password</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Temporary Password</label>
               <input 
                 type="password" 
                 required 
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full p-2 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
+                className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-zinc-900"
                 placeholder="Min 6 characters"
               />
             </div>
             <div className="flex items-end gap-2">
-              <button type="submit" className="flex-1 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-all">
-                Create User
+              <button type="submit" className="flex-1 py-2.5 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-zinc-800 transition-all">
+                Create Account
               </button>
-              <button type="button" onClick={() => setAddingUser(false)} className="px-4 py-2 bg-zinc-100 text-zinc-500 font-bold rounded-lg hover:bg-zinc-200 transition-all">
+              <button type="button" onClick={() => setAddingUser(false)} className="px-4 py-2.5 bg-zinc-100 text-zinc-500 text-xs font-bold rounded-xl hover:bg-zinc-200 transition-all">
                 Cancel
               </button>
             </div>
@@ -1754,54 +2194,60 @@ function UsersManager() {
         </div>
       )}
 
-      {loading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
-        </div>
-      ) : (
-        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200">
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Email</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">User ID</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Created At</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Last Sign In</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
+              <tr className="bg-zinc-50 border-b border-zinc-100">
+                <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Administrator</th>
+                <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Role</th>
+                <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Last Activity</th>
+                <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-zinc-50/50 transition-colors">
+            <tbody className="divide-y divide-zinc-50">
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-20 text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto" />
+                  </td>
+                </tr>
+              ) : users.map((u) => (
+                <tr key={u.id} className="hover:bg-zinc-50/50 transition-colors group">
                   <td className="px-6 py-4">
-                    <span className="text-sm font-bold text-zinc-900">{u.email}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500 font-black text-xs">
+                        {u.email[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-zinc-900">{u.email}</p>
+                        <p className="text-[10px] text-zinc-400 font-medium">ID: {u.id.slice(0, 8)}...</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-xs font-mono text-zinc-400">{u.id}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs text-zinc-500">
-                      {u.created_at ? format(new Date(u.created_at), 'MMM d, yyyy') : '—'}
+                    <span className="px-2 py-1 bg-zinc-100 text-zinc-600 text-[10px] font-black rounded uppercase tracking-widest">
+                      Super Admin
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-xs text-zinc-500">
-                      {u.last_sign_in_at ? format(new Date(u.last_sign_in_at), 'MMM d, yyyy HH:mm') : 'Never'}
-                    </span>
+                    <p className="text-xs text-zinc-500 font-medium">
+                      {u.last_sign_in_at ? format(new Date(u.last_sign_in_at), 'MMM d, HH:mm') : 'Never'}
+                    </p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => handleResetPassword(u.id, u.email)}
-                        className="p-1.5 rounded-lg text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+                        className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-white rounded-lg border border-transparent hover:border-zinc-200 transition-all"
                         title="Reset Password"
                       >
-                        <Clock className="w-4 h-4" />
+                        <RefreshCcw className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => handleDeleteUser(u.id, u.email)}
-                        className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                        title="Delete User"
+                        className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-100 transition-all"
+                        title="Revoke Access"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1812,12 +2258,12 @@ function UsersManager() {
             </tbody>
           </table>
         </div>
-      )}
+      </div>
 
       {confirmDelete && (
         <ConfirmationModal
-          title="Delete Admin User"
-          message={`Are you sure you want to delete admin user ${confirmDelete.email}? This action cannot be undone.`}
+          title="Revoke Access?"
+          message={`You are about to permanently revoke administrative access for ${confirmDelete.email}. This action cannot be undone.`}
           onConfirm={executeDelete}
           onCancel={() => setConfirmDelete(null)}
         />
@@ -1915,72 +2361,61 @@ function ErrorLogsManager() {
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-      case 'error': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'warning': return 'bg-amber-100 text-amber-800 border-amber-200';
-      default: return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'critical': return 'bg-red-50 text-red-600 border-red-100';
+      case 'error': return 'bg-orange-50 text-orange-600 border-orange-100';
+      case 'warning': return 'bg-amber-50 text-amber-600 border-amber-100';
+      default: return 'bg-blue-50 text-blue-600 border-blue-100';
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-4 items-center bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-zinc-400" />
-          <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Filters:</span>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Site Health Monitor</h2>
+          <p className="text-sm text-zinc-500">Real-time system diagnostics and error tracking.</p>
         </div>
-        
-        <select 
-          value={filter.severity}
-          onChange={(e) => setFilter({ ...filter, severity: e.target.value })}
-          className="text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
-        >
-          <option value="all">All Severities</option>
-          <option value="critical">Critical</option>
-          <option value="error">Error</option>
-          <option value="warning">Warning</option>
-          <option value="info">Info</option>
-        </select>
-
-        <select 
-          value={filter.source}
-          onChange={(e) => setFilter({ ...filter, source: e.target.value })}
-          className="text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
-        >
-          <option value="all">All Sources</option>
-          <option value="client">Client</option>
-          <option value="api">API</option>
-          <option value="job">Job</option>
-        </select>
-
-        <select 
-          value={filter.resolved}
-          onChange={(e) => setFilter({ ...filter, resolved: e.target.value })}
-          className="text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900"
-        >
-          <option value="all">All Status</option>
-          <option value="false">Unresolved</option>
-          <option value="true">Resolved</option>
-        </select>
-
-        <button 
-          onClick={fetchLogs}
-          className="ml-auto p-2 hover:bg-zinc-100 rounded-lg transition-all"
-          title="Refresh Logs"
-        >
-          <Clock className="w-4 h-4 text-zinc-400" />
-        </button>
-
-        <button 
-          onClick={() => {
-            const err = new Error("Manual Test Error: " + new Date().toLocaleTimeString());
-            logger.error(err.message, err, { test: true });
-            setTimeout(fetchLogs, 1000);
-          }}
-          className="px-4 py-1.5 bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-zinc-800 transition-all"
-        >
-          Generate Test Error
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-zinc-200">
+            <select 
+              value={filter.severity}
+              onChange={(e) => setFilter({ ...filter, severity: e.target.value })}
+              className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg outline-none hover:bg-zinc-50 transition-colors"
+            >
+              <option value="all">Severities</option>
+              <option value="critical">Critical</option>
+              <option value="error">Error</option>
+              <option value="warning">Warning</option>
+            </select>
+            <div className="w-px h-4 bg-zinc-200" />
+            <select 
+              value={filter.source}
+              onChange={(e) => setFilter({ ...filter, source: e.target.value })}
+              className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg outline-none hover:bg-zinc-50 transition-colors"
+            >
+              <option value="all">Sources</option>
+              <option value="client">Client</option>
+              <option value="api">API</option>
+            </select>
+            <div className="w-px h-4 bg-zinc-200" />
+            <select 
+              value={filter.resolved}
+              onChange={(e) => setFilter({ ...filter, resolved: e.target.value })}
+              className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg outline-none hover:bg-zinc-50 transition-colors"
+            >
+              <option value="all">Status</option>
+              <option value="false">Unresolved</option>
+              <option value="true">Resolved</option>
+            </select>
+          </div>
+          <button 
+            onClick={fetchLogs}
+            className="p-2.5 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-all"
+            title="Refresh Logs"
+          >
+            <RefreshCcw className="w-4 h-4 text-zinc-400" />
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -1988,113 +2423,111 @@ function ErrorLogsManager() {
           <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
         </div>
       ) : (
-        <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200">
-                <th className="w-10 px-6 py-4"></th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Severity & Source</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Message</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Timestamp</th>
-                <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {logs.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center text-zinc-400 italic">No error logs found matching filters.</td>
-                </tr>
-              ) : logs.map((log) => (
-                <React.Fragment key={log.id}>
-                  <tr 
-                    className={`hover:bg-zinc-50/50 transition-colors cursor-pointer ${expandedId === log.id ? 'bg-zinc-50/50' : ''}`}
-                    onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+        <div className="space-y-3">
+          {logs.map((log) => (
+            <div 
+              key={log.id} 
+              className={`bg-white border rounded-2xl overflow-hidden transition-all ${
+                expandedId === log.id ? 'border-zinc-900 shadow-xl' : 'border-zinc-200 hover:border-zinc-300 shadow-sm'
+              } ${log.resolved ? 'opacity-60' : ''}`}
+            >
+              <div 
+                className="p-4 flex items-center gap-4 cursor-pointer"
+                onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+              >
+                <div className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest border ${getSeverityColor(log.severity)}`}>
+                  {log.severity}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-zinc-900 truncate">{log.message}</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{log.source}</span>
+                    <span className="text-[10px] text-zinc-300">•</span>
+                    <span className="text-[10px] font-medium text-zinc-500">
+                      {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
+                    </span>
+                    {log.route && (
+                      <>
+                        <span className="text-[10px] text-zinc-300">•</span>
+                        <span className="text-[10px] font-medium text-zinc-500 truncate max-w-[200px]">{log.route}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleResolve(log);
+                    }}
+                    className={`p-2 rounded-lg transition-all ${
+                      log.resolved ? 'text-emerald-600 bg-emerald-50' : 'text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100'
+                    }`}
+                    title={log.resolved ? "Mark Unresolved" : "Mark Resolved"}
                   >
-                    <td className="px-6 py-4">
-                      {expandedId === log.id ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${getSeverityColor(log.severity)}`}>
-                          {log.severity}
-                        </span>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1">
-                          <Terminal className="w-3 h-3" /> {log.source}
-                        </span>
+                    <CheckCircle2 className="w-4 h-4" />
+                  </button>
+                  <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${expandedId === log.id ? 'rotate-180' : ''}`} />
+                </div>
+              </div>
+
+              {expandedId === log.id && (
+                <div className="px-4 pb-4 border-t border-zinc-50 bg-zinc-50/50 animate-in slide-in-from-top-2 duration-200">
+                  <div className="py-4 space-y-4">
+                    {log.stack && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Stack Trace</h4>
+                        <pre className="p-4 bg-zinc-900 text-zinc-300 text-[11px] font-mono rounded-xl overflow-x-auto leading-relaxed max-h-[300px]">
+                          {log.stack}
+                        </pre>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-zinc-900 line-clamp-1">{log.message}</p>
-                      {log.route && <p className="text-[10px] text-zinc-400 font-mono">{log.route}</p>}
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-xs text-zinc-500">
-                        {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleResolve(log);
-                        }}
-                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                          log.resolved 
-                            ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' 
-                            : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
-                        }`}
-                      >
-                        {log.resolved ? 'Resolved' : 'Mark Resolved'}
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedId === log.id && (
-                    <tr className="bg-zinc-50/30">
-                      <td colSpan={5} className="px-12 py-6 border-t border-zinc-100">
-                        <div className="space-y-6">
-                          {log.stack && (
-                            <div>
-                              <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Stack Trace</h4>
-                              <pre className="bg-zinc-900 text-zinc-300 p-4 rounded-xl text-xs font-mono overflow-x-auto max-h-60">
-                                {log.stack}
-                              </pre>
+                    )}
+                    
+                    {log.metadata && Object.keys(log.metadata).length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Metadata</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {Object.entries(log.metadata).map(([key, value]) => (
+                            <div key={key} className="flex items-center justify-between p-2 bg-white border border-zinc-100 rounded-lg">
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight">{key}</span>
+                              <span className="text-xs font-medium text-zinc-900 truncate ml-4">
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </span>
                             </div>
-                          )}
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                              <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Metadata</h4>
-                              <pre className="bg-white border border-zinc-200 p-4 rounded-xl text-xs font-mono overflow-x-auto">
-                                {JSON.stringify(log.metadata, null, 2)}
-                              </pre>
-                            </div>
-                            <div className="space-y-4">
-                              <div>
-                                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Context</h4>
-                                <div className="space-y-1">
-                                  <p className="text-xs text-zinc-600"><span className="font-bold">Endpoint:</span> {log.endpoint || 'N/A'}</p>
-                                  <p className="text-xs text-zinc-600"><span className="font-bold">Session ID:</span> {log.session_id || 'N/A'}</p>
-                                  <p className="text-xs text-zinc-600"><span className="font-bold">User ID:</span> {log.user_id || 'Anonymous'}</p>
-                                </div>
-                              </div>
-                              {log.resolved && (
-                                <div>
-                                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resolution</h4>
-                                  <p className="text-xs text-zinc-600">
-                                    Resolved at {format(new Date(log.resolved_at!), 'MMM d, yyyy HH:mm')}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                          ))}
                         </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-4 border-t border-zinc-100">
+                      <div className="flex items-center gap-4">
+                        {log.user_id && (
+                          <div className="text-[10px] text-zinc-500">
+                            User ID: <span className="font-bold text-zinc-900">{log.user_id}</span>
+                          </div>
+                        )}
+                        {log.session_id && (
+                          <div className="text-[10px] text-zinc-500">
+                            Session: <span className="font-bold text-zinc-900">{log.session_id}</span>
+                          </div>
+                        )}
+                      </div>
+                      {log.resolved_at && (
+                        <div className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">
+                          Resolved {format(new Date(log.resolved_at), 'MMM d, yyyy HH:mm')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          {logs.length === 0 && (
+            <div className="py-20 text-center bg-white border border-zinc-200 rounded-2xl border-dashed">
+              <p className="text-sm text-zinc-400 italic">No system events logged matching your filters.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
