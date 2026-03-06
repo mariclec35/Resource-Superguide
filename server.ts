@@ -26,41 +26,64 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 // Seed requested admin user immediately
 (async () => {
   try {
-    const email = "rosesroses1212@gmail.com";
-    const password = "Lovechris*1212";
+    const adminAccounts = [
+      { email: "rosesroses1212@gmail.com", password: "Lovechris*1212" },
+      { email: "mariclec35@gmail.com", password: "Lovechris*1212" } // Added user's email as admin
+    ];
     const logFile = "seed_results.log";
     
-    fs.appendFileSync(logFile, `${new Date().toISOString()} - Seeding check started for ${email}\n`);
+    fs.appendFileSync(logFile, `${new Date().toISOString()} - Seeding check started\n`);
     
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+    console.log("Calling listUsers...");
+    const { data, error: listError } = await supabase.auth.admin.listUsers();
+    console.log("listUsers returned", { hasData: !!data, hasError: !!listError });
     
     if (listError) {
       const msg = `Failed to list users during seeding: ${JSON.stringify(listError)}`;
       console.error(msg);
       fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
     } else {
-      const existingUser = users.find(u => u.email === email);
-      if (!existingUser) {
-        console.log(`Creating admin user ${email}...`);
-        const { error: createError } = await supabase.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true
-        });
-        
-        if (createError) {
-          const msg = `Failed to create admin user ${email}: ${JSON.stringify(createError)}`;
-          console.error(msg);
-          fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+      const users = data.users;
+      fs.appendFileSync(logFile, `${new Date().toISOString()} - Found ${users.length} existing users\n`);
+      for (const account of adminAccounts) {
+        const existingUser = users.find(u => u.email === account.email);
+        if (!existingUser) {
+          console.log(`Creating admin user ${account.email}...`);
+          fs.appendFileSync(logFile, `${new Date().toISOString()} - Creating user ${account.email}\n`);
+          const { error: createError } = await supabase.auth.admin.createUser({
+            email: account.email,
+            password: account.password,
+            email_confirm: true
+          });
+          
+          if (createError) {
+            const msg = `Failed to create admin user ${account.email}: ${JSON.stringify(createError)}`;
+            console.error(msg);
+            fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+          } else {
+            const msg = `Successfully created admin user ${account.email}`;
+            console.log(msg);
+            fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+          }
         } else {
-          const msg = `Successfully created admin user ${email}`;
-          console.log(msg);
-          fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+          // If user exists, ensure password is set to the expected one for recovery
+          console.log(`Updating admin user ${account.email} password...`);
+          fs.appendFileSync(logFile, `${new Date().toISOString()} - Updating user ${account.email}\n`);
+          const { error: updateError } = await supabase.auth.admin.updateUserById(existingUser.id, {
+            password: account.password,
+            email_confirm: true
+          });
+          
+          if (updateError) {
+            const msg = `Failed to update admin user ${account.email}: ${JSON.stringify(updateError)}`;
+            console.error(msg);
+            fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+          } else {
+            const msg = `Successfully updated admin user ${account.email}`;
+            console.log(msg);
+            fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+          }
         }
-      } else {
-        const msg = `Admin user ${email} already exists.`;
-        console.log(msg);
-        fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
       }
     }
   } catch (err: any) {
