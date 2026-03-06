@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ShieldCheck, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
@@ -9,6 +9,10 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "SuperGuide";
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -263,52 +263,6 @@ app.post("/api/admin/categories/reset", async (req, res) => {
   }
 });
 
-// API: AI Search Extraction
-app.post("/api/search/extract", async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ error: "Prompt is required" });
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        systemInstruction: `Extract structured needs from the user's community resource request.
-Return a JSON object with:
-- need_types: string[] (housing, shelter, food, treatment, recovery support, employment, transportation, legal, healthcare, mental health, youth services, family services, domestic violence support, financial assistance)
-- urgency: string (immediate, this_week, ongoing)
-- location: string | null
-- preferences: string[]
-- barriers: string[]
-- eligibility_clues: string[]
-- keywords: string[]
-- ai_summary: string (A short interpretation of the user's needs)`,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            need_types: { type: Type.ARRAY, items: { type: Type.STRING } },
-            urgency: { type: Type.STRING },
-            location: { type: Type.STRING, nullable: true },
-            preferences: { type: Type.ARRAY, items: { type: Type.STRING } },
-            barriers: { type: Type.ARRAY, items: { type: Type.STRING } },
-            eligibility_clues: { type: Type.ARRAY, items: { type: Type.STRING } },
-            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-            ai_summary: { type: Type.STRING }
-          },
-          required: ["need_types", "urgency", "preferences", "barriers", "eligibility_clues", "keywords", "ai_summary"]
-        }
-      }
-    });
-
-    const extraction = JSON.parse(response.text || "{}");
-    res.json(extraction);
-  } catch (err: any) {
-    console.error("Extraction error:", err);
-    res.status(500).json({ error: "Failed to extract search intent" });
-  }
-});
-
 // API: Search Analytics
 app.post("/api/search/analytics", async (req, res) => {
   const { 

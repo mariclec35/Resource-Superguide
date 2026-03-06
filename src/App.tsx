@@ -41,6 +41,7 @@ export default function App() {
               <Link to="/privacy" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Privacy</Link>
               <Link to="/terms" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Terms</Link>
               <a href="#" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Contact</a>
+              <Link to="/admin" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Admin</Link>
             </div>
           </div>
         </footer>

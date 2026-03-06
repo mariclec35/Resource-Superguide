@@ -4,6 +4,7 @@ import { Resource, Category } from '../types';
 import ResourceCard from '../components/ResourceCard';
 import { Search, Loader2, Sparkles, ArrowRight, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GoogleGenAI, Type } from "@google/genai";
 
 export default function Home() {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -15,6 +16,7 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
+    document.title = "SuperGuide";
     fetchData();
     const saved = localStorage.getItem('my-guide');
     if (saved) setMyGuideIds(JSON.parse(saved));
@@ -50,13 +52,44 @@ export default function Home() {
 
     setIsSearching(true);
     try {
-      // 1. Extract intent
-      const res = await fetch('/api/search/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt })
+      // 1. Extract intent using Gemini directly from frontend
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error("Gemini API Key is missing");
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: aiPrompt,
+        config: {
+          systemInstruction: `Extract structured needs from the user's community resource request.
+Return a JSON object with:
+- need_types: string[] (housing, shelter, food, treatment, recovery support, employment, transportation, legal, healthcare, mental health, youth services, family services, domestic violence support, financial assistance)
+- urgency: string (immediate, this_week, ongoing)
+- location: string | null
+- preferences: string[]
+- barriers: string[]
+- eligibility_clues: string[]
+- keywords: string[]
+- ai_summary: string (A short interpretation of the user's needs)`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              need_types: { type: Type.ARRAY, items: { type: Type.STRING } },
+              urgency: { type: Type.STRING },
+              location: { type: Type.STRING, nullable: true },
+              preferences: { type: Type.ARRAY, items: { type: Type.STRING } },
+              barriers: { type: Type.ARRAY, items: { type: Type.STRING } },
+              eligibility_clues: { type: Type.ARRAY, items: { type: Type.STRING } },
+              keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+              ai_summary: { type: Type.STRING }
+            },
+            required: ["need_types", "urgency", "preferences", "barriers", "eligibility_clues", "keywords", "ai_summary"]
+          }
+        }
       });
-      const extraction = await res.json();
+
+      const extraction = JSON.parse(response.text || "{}");
       setAiExtraction(extraction);
 
       // 2. Grounded Matching
@@ -180,11 +213,7 @@ export default function Home() {
                 }
               }}
             />
-            <div className="px-6 py-4 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-zinc-400 text-sm">
-                <Sparkles className="w-4 h-4 text-emerald-500" />
-                <span>AI-powered matching</span>
-              </div>
+            <div className="px-6 py-4 bg-zinc-50 border-t border-zinc-100 flex items-center justify-end">
               <button
                 type="submit"
                 disabled={isSearching || !aiPrompt.trim()}
@@ -248,7 +277,7 @@ export default function Home() {
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-zinc-900 mb-2 tracking-tight">AI Interpretation</h2>
+                  <h2 className="text-2xl font-black text-zinc-900 mb-2 tracking-tight">Interpretation</h2>
                   <p className="text-emerald-900 text-lg leading-relaxed font-medium">
                     {aiExtraction.ai_summary}
                   </p>
@@ -287,10 +316,6 @@ export default function Home() {
             <div className="w-24 h-24 bg-zinc-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <Search className="w-10 h-10 text-zinc-300" />
             </div>
-            <h3 className="text-2xl font-bold text-zinc-900 mb-3">Ready to find your path?</h3>
-            <p className="text-zinc-500 text-lg max-w-lg mx-auto">
-              Our AI-powered directory helps you find exactly what you need. Just describe your situation above to get started.
-            </p>
           </motion.div>
         )}
       </AnimatePresence>

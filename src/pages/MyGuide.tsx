@@ -12,6 +12,7 @@ export default function MyGuide() {
   const [myGuideIds, setMyGuideIds] = useState<string[]>([]);
 
   useEffect(() => {
+    document.title = "SuperGuide";
     const saved = localStorage.getItem('my-guide');
     if (saved) {
       const ids = JSON.parse(saved);

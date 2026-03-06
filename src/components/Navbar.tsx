@@ -10,7 +10,6 @@ export default function Navbar() {
   const navLinks = [
     { name: 'Find Resources', href: '/', icon: MapPin },
     { name: 'My Resource List', href: '/my-guide', icon: BookOpen },
-    { name: 'Admin', href: '/admin', icon: ShieldCheck },
   ];
 
   return (

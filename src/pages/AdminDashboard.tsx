@@ -2,12 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { 
   LayoutDashboard, FileText, AlertCircle, Plus, 
   Settings, LogOut, Loader2, Search, Filter,
   CheckCircle2, XCircle, Clock, MoreVertical,
   Edit2, Trash2, ExternalLink, ShieldAlert, Terminal,
   ChevronDown, ChevronUp, Users, LayoutGrid, Upload, Bot, RefreshCcw,
-  BarChart3, Star, BookOpen, TrendingUp, ThumbsUp, ThumbsDown
+  BarChart3, Star, BookOpen, TrendingUp, ThumbsUp, ThumbsDown,
+  GripVertical, Eye, EyeOff
 } from 'lucide-react';
 import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
@@ -19,9 +37,11 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'resources' | 'reports' | 'categories' | 'errors' | 'users' | 'import' | 'ai' | 'analytics' | 'feedback'>('overview');
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [systemMenuOpen, setSystemMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    document.title = "SuperGuide";
     checkUser();
   }, []);
 
@@ -75,7 +95,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="flex border-b border-zinc-200 overflow-x-auto no-scrollbar mb-8">
+      <div className="flex border-b border-zinc-200 overflow-x-auto no-scrollbar mb-8 sticky top-16 bg-zinc-50/80 backdrop-blur-md z-40 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <button
           onClick={() => setActiveTab('overview')}
           className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
@@ -87,6 +107,19 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-2">
             <LayoutDashboard className="w-4 h-4" />
             Overview
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
+            activeTab === 'categories' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Categories
           </div>
         </button>
         <button
@@ -128,84 +161,61 @@ export default function AdminDashboard() {
             Analytics
           </div>
         </button>
-        <button
-          onClick={() => setActiveTab('reports')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'reports' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            Reports
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('categories')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'categories' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Categories
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('errors')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'errors' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4" />
-            Errors
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'users' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Users
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('ai')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'ai' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4" />
-            AI Assistant
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('import')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
-            activeTab === 'import' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            Import
-          </div>
-        </button>
+
+        <div className="relative group">
+          <button
+            onClick={() => setSystemMenuOpen(!systemMenuOpen)}
+            className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+              ['reports', 'users', 'errors', 'import', 'ai'].includes(activeTab)
+                ? 'border-zinc-900 text-zinc-900' 
+                : 'border-transparent text-zinc-400 hover:text-zinc-600'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            System
+            <ChevronDown className={`w-3 h-3 transition-transform ${systemMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {systemMenuOpen && (
+            <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-zinc-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <button
+                onClick={() => { setActiveTab('reports'); setSystemMenuOpen(false); }}
+                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'reports' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
+              >
+                <AlertCircle className="w-4 h-4" />
+                Reports
+              </button>
+              <button
+                onClick={() => { setActiveTab('users'); setSystemMenuOpen(false); }}
+                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'users' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
+              >
+                <Users className="w-4 h-4" />
+                Users
+              </button>
+              <button
+                onClick={() => { setActiveTab('errors'); setSystemMenuOpen(false); }}
+                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'errors' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
+              >
+                <ShieldAlert className="w-4 h-4" />
+                Errors
+              </button>
+              <button
+                onClick={() => { setActiveTab('import'); setSystemMenuOpen(false); }}
+                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'import' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
+              >
+                <Upload className="w-4 h-4" />
+                Import
+              </button>
+              <button
+                onClick={() => { setActiveTab('ai'); setSystemMenuOpen(false); }}
+                className={`w-full px-4 py-3 text-left text-sm font-bold flex items-center gap-2 hover:bg-zinc-50 transition-colors ${activeTab === 'ai' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-500'}`}
+              >
+                <Bot className="w-4 h-4" />
+                AI Assistant
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {activeTab === 'overview' && <Overview />}
@@ -861,11 +871,16 @@ function CategoriesManager() {
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
   const [newParentId, setNewParentId] = useState<string | null>(null);
-  const [newSequence, setNewSequence] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editParentId, setEditParentId] = useState<string | null>(null);
-  const [editSequence, setEditSequence] = useState(0);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     fetchCategories();
@@ -874,14 +889,26 @@ function CategoriesManager() {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      // Try with sequence first
+      // Try with display_order first
       let { data, error } = await supabase
         .from('categories')
         .select('*')
-        .order('sequence', { ascending: true })
+        .order('display_order', { ascending: true })
         .order('name');
       
-      // Fallback if any error occurs (likely missing column)
+      // Fallback to sequence if display_order fails
+      if (error) {
+        console.warn('display_order fetch failed, trying sequence:', error.message);
+        const seqFallback = await supabase
+          .from('categories')
+          .select('*')
+          .order('sequence', { ascending: true })
+          .order('name');
+        data = seqFallback.data;
+        error = seqFallback.error;
+      }
+
+      // Final fallback to name
       if (error) {
         console.warn('Sequence fetch failed, falling back to name sort:', error.message);
         const fallback = await supabase
@@ -894,21 +921,14 @@ function CategoriesManager() {
       
       if (error) {
         console.error('Error fetching categories:', error);
-        logger.error('Failed to fetch categories', error);
       } else if (data) {
-        if (data.length === 0) {
-          setCategories([]);
-        } else {
-          const roots = data.filter(c => !c.parent_id);
-          const hierarchical: Category[] = [];
-          roots.forEach(root => {
-            hierarchical.push(root);
-            const children = data.filter(c => c.parent_id === root.id);
-            hierarchical.push(...children);
-          });
-          // Fallback to flat list if hierarchical logic resulted in empty but we have data
-          setCategories(hierarchical.length > 0 ? hierarchical : data);
-        }
+        // Map sequence to display_order if needed for the UI state
+        const mappedData = data.map(c => ({
+          ...c,
+          display_order: c.display_order ?? (c as any).sequence ?? 0,
+          is_active: c.is_active ?? true
+        }));
+        setCategories(mappedData);
       }
     } catch (err) {
       console.error('Unexpected error in fetchCategories:', err);
@@ -921,21 +941,40 @@ function CategoriesManager() {
     e.preventDefault();
     if (!newName.trim()) return;
     
+    // Calculate next display order
+    const sameLevel = categories.filter(c => c.parent_id === (newParentId || null));
+    const nextOrder = sameLevel.length > 0 ? Math.max(...sameLevel.map(c => c.display_order)) + 1 : 0;
+
     const { error } = await supabase
       .from('categories')
       .insert({ 
         name: newName.trim(),
         parent_id: newParentId || null,
-        sequence: newSequence
+        display_order: nextOrder,
+        is_active: true
       });
     
     if (!error) {
       setNewName('');
       setNewParentId(null);
-      setNewSequence(0);
       fetchCategories();
     } else {
-      alert('Error adding category: ' + error.message);
+      // Try sequence if display_order fails
+      const { error: seqError } = await supabase
+        .from('categories')
+        .insert({ 
+          name: newName.trim(),
+          parent_id: newParentId || null,
+          sequence: nextOrder
+        });
+      
+      if (!seqError) {
+        setNewName('');
+        setNewParentId(null);
+        fetchCategories();
+      } else {
+        alert('Error adding category: ' + (error?.message || seqError?.message));
+      }
     }
   };
 
@@ -946,8 +985,7 @@ function CategoriesManager() {
       .from('categories')
       .update({ 
         name: editName.trim(),
-        parent_id: editParentId || null,
-        sequence: editSequence
+        parent_id: editParentId || null
       })
       .eq('id', id);
     
@@ -959,43 +997,21 @@ function CategoriesManager() {
     }
   };
 
-  const handleReset = async () => {
-    if (confirm('Are you sure you want to reset ALL categories? This will delete all current categories and replace them with the standard set from the guide. This action cannot be undone.')) {
-      setLoading(true);
-      try {
-        const response = await fetch('/api/admin/categories/reset', {
-          method: 'POST',
-        });
-        if (response.ok) {
-          alert('Categories reset successfully!');
-          fetchCategories();
-        } else {
-          const err = await response.json();
-          alert('Error resetting categories: ' + (err.error || 'Unknown error'));
-        }
-      } catch (err: any) {
-        alert('Error resetting categories: ' + err.message);
-      } finally {
-        setLoading(false);
-      }
+  const toggleActive = async (cat: Category) => {
+    const { error } = await supabase
+      .from('categories')
+      .update({ is_active: !cat.is_active })
+      .eq('id', cat.id);
+    
+    if (!error) {
+      fetchCategories();
+    } else {
+      alert('Error toggling status: ' + error.message);
     }
   };
 
-  const getParentName = (parentId: string | null | undefined) => {
-    if (!parentId) return null;
-    return categories.find(c => c.id === parentId)?.name;
-  };
-
-  const renderCategoryOptions = (excludeId?: string) => {
-    return categories
-      .filter(c => c.id !== excludeId && !c.parent_id) // Only top-level categories as parents for now to avoid deep nesting complexity
-      .map(c => (
-        <option key={c.id} value={c.id}>{c.name}</option>
-      ));
-  };
-
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure? This will not remove the category from existing resources, but it will disappear from filters.')) {
+    if (confirm('Are you sure? This will permanently remove the category.')) {
       const { error } = await supabase
         .from('categories')
         .delete()
@@ -1006,179 +1022,100 @@ function CategoriesManager() {
     }
   };
 
-  const renderCategoryCard = (cat: Category, isSub = false) => {
-    const isEditing = editingId === cat.id;
-    const subcategories = categories.filter(c => c.parent_id === cat.id);
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    return (
-      <div 
-        key={cat.id} 
-        className={`group transition-all ${isSub ? 'ml-8 mt-2' : 'mt-4 first:mt-0'}`}
-      >
-        <div className={`
-          relative flex items-center gap-4 p-4 rounded-2xl border transition-all
-          ${isEditing ? 'bg-white border-zinc-900 shadow-lg ring-1 ring-zinc-900' : 'bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-sm'}
-          ${isSub ? 'bg-zinc-50/50' : ''}
-        `}>
-          {/* Sequence Badge */}
-          <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-zinc-100 text-zinc-500 font-mono text-xs font-bold">
-            {isEditing ? (
-              <input
-                type="number"
-                value={editSequence}
-                onChange={(e) => setEditSequence(parseInt(e.target.value) || 0)}
-                className="w-full bg-transparent text-center outline-none focus:text-zinc-900"
-              />
-            ) : (
-              <span>{cat.sequence}</span>
-            )}
-          </div>
+    const activeId = active.id as string;
+    const overId = over.id as string;
 
-          <div className="flex-1 min-w-0">
-            {isEditing ? (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 text-sm font-bold"
-                  autoFocus
-                />
-                <select
-                  value={editParentId || ''}
-                  onChange={(e) => setEditParentId(e.target.value || null)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 text-xs bg-white"
-                >
-                  <option value="">No Parent (Top Level)</option>
-                  {renderCategoryOptions(cat.id)}
-                </select>
-              </div>
-            ) : (
-              <div>
-                <h4 className={`text-sm font-bold truncate ${isSub ? 'text-zinc-600' : 'text-zinc-900'}`}>
-                  {cat.name}
-                </h4>
-                {!isSub && subcategories.length > 0 && (
-                  <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest mt-0.5">
-                    {subcategories.length} Subcategories
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+    const activeCat = categories.find(c => c.id === activeId);
+    const overCat = categories.find(c => c.id === overId);
 
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {isEditing ? (
-              <>
-                <button
-                  onClick={() => handleUpdate(cat.id)}
-                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                  title="Save changes"
-                >
-                  <CheckCircle2 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setEditingId(null)}
-                  className="p-2 text-zinc-400 hover:bg-zinc-100 rounded-lg transition-colors"
-                  title="Cancel"
-                >
-                  <XCircle className="w-5 h-5" />
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => {
-                    setEditingId(cat.id);
-                    setEditName(cat.name);
-                    setEditParentId(cat.parent_id || null);
-                    setEditSequence(cat.sequence || 0);
-                  }}
-                  className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
-                  title="Edit category"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(cat.id)}
-                  className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete category"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+    if (!activeCat || !overCat || activeCat.parent_id !== overCat.parent_id) return;
 
-        {/* Render children if this is a root category */}
-        {!isSub && subcategories.length > 0 && (
-          <div className="relative">
-            <div className="absolute left-5 top-0 bottom-4 w-0.5 bg-zinc-100" />
-            {subcategories.map(sub => renderCategoryCard(sub, true))}
-          </div>
-        )}
-      </div>
-    );
+    const sameLevel = categories.filter(c => c.parent_id === activeCat.parent_id);
+    const oldIndex = sameLevel.findIndex(c => c.id === activeId);
+    const newIndex = sameLevel.findIndex(c => c.id === overId);
+
+    const newOrder = arrayMove(sameLevel, oldIndex, newIndex);
+    
+    // Optimistic update
+    const updatedCategories = categories.map(c => {
+      const found = newOrder.find((no: Category) => no.id === c.id);
+      if (found) {
+        return { ...c, display_order: newOrder.indexOf(found) };
+      }
+      return c;
+    });
+    setCategories(updatedCategories);
+
+    // Persist to DB
+    try {
+      const updates = newOrder.map((cat: Category, index: number) => ({
+        id: cat.id,
+        display_order: index,
+        name: cat.name, 
+        parent_id: cat.parent_id
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from('categories')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
+      }
+    } catch (err) {
+      console.error('Error persisting drag order:', err);
+      fetchCategories(); // Revert on error
+    }
   };
 
+  const primaryCategories = categories.filter(c => !c.parent_id).sort((a, b) => a.display_order - b.display_order);
+
   return (
-    <div className="space-y-8 max-w-3xl">
-      {/* Add Category Form */}
-      <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2">
-            <Plus className="w-5 h-5 text-zinc-900" />
-            <h3 className="font-bold text-zinc-900">Add New Category</h3>
-          </div>
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all border border-red-100"
-          >
-            <RefreshCcw className="w-4 h-4" />
-            Reset to Standard
-          </button>
+    <div className="space-y-8 max-w-4xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Category Management</h2>
+          <p className="text-sm text-zinc-500">Organize resources into a simple two-level hierarchy.</p>
         </div>
-        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          <div className="md:col-span-5">
-            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Name</label>
+      </div>
+
+      {/* Add Category Form */}
+      <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+        <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Category Name</label>
             <input
               type="text"
-              placeholder="e.g. Mental Health"
+              placeholder="e.g. Technology"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm font-medium"
             />
           </div>
-          <div className="md:col-span-4">
-            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Parent Category</label>
+          <div className="w-64">
+            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Parent (Optional)</label>
             <select
               value={newParentId || ''}
               onChange={(e) => setNewParentId(e.target.value || null)}
               className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white font-medium"
             >
-              <option value="">None (Top Level)</option>
-              {renderCategoryOptions()}
+              <option value="">Primary Category</option>
+              {primaryCategories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
             </select>
           </div>
-          <div className="md:col-span-1">
-            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Seq</label>
-            <input
-              type="number"
-              value={newSequence}
-              onChange={(e) => setNewSequence(parseInt(e.target.value) || 0)}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm text-center font-mono"
-            />
-          </div>
-          <div className="md:col-span-2 flex items-end">
-            <button
-              type="submit"
-              disabled={!newName.trim()}
-              className="w-full py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm"
-            >
-              Add
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={!newName.trim()}
+            className="px-8 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Category
+          </button>
         </form>
       </div>
 
@@ -1186,40 +1123,238 @@ function CategoriesManager() {
         <div className="flex justify-center py-20">
           <Loader2 className="w-10 h-10 animate-spin text-zinc-200" />
         </div>
-      ) : categories.length === 0 ? (
-        <div className="bg-zinc-50 border border-dashed border-zinc-200 rounded-3xl p-16 text-center space-y-6">
-          <div className="bg-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-sm rotate-3">
-            <LayoutGrid className="w-8 h-8 text-zinc-400" />
-          </div>
-          <div className="max-w-xs mx-auto">
-            <h3 className="text-zinc-900 font-bold text-lg">No categories yet</h3>
-            <p className="text-zinc-500 text-sm mt-1">Organize your resources by creating primary and secondary categories.</p>
-          </div>
-          <button
-            onClick={async () => {
-              const initial = [
-                'Housing', 'Food Shelf', 'Mental Health', 'Chemical Dependency', 
-                'Employment', 'Legal', 'Medical', 'Crisis', 'Other'
-              ];
-              for (const name of initial) {
-                await supabase.from('categories').insert({ name });
-              }
-              fetchCategories();
-            }}
-            className="px-8 py-3 bg-white border border-zinc-200 text-zinc-900 font-bold rounded-2xl hover:bg-zinc-50 hover:shadow-md transition-all text-sm"
-          >
-            Seed Initial Categories
-          </button>
-        </div>
       ) : (
-        <div className="space-y-2 pb-20">
-          <div className="flex items-center justify-between px-2 mb-4">
-            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Category Structure</h3>
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{categories.length} Total</span>
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="space-y-6">
+            <SortableContext 
+              items={primaryCategories.map(c => c.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {primaryCategories.map(cat => (
+                <SortableCategoryItem 
+                  key={cat.id} 
+                  category={cat} 
+                  allCategories={categories}
+                  onEdit={(id, name, parentId) => {
+                    setEditingId(id);
+                    setEditName(name);
+                    setEditParentId(parentId);
+                  }}
+                  onDelete={handleDelete}
+                  onToggleActive={toggleActive}
+                  isEditing={editingId === cat.id}
+                  editName={editName}
+                  setEditName={setEditName}
+                  editParentId={editParentId}
+                  setEditParentId={setEditParentId}
+                  onSave={() => handleUpdate(cat.id)}
+                  onCancel={() => setEditingId(null)}
+                  onDragEnd={handleDragEnd}
+                />
+              ))}
+            </SortableContext>
           </div>
-          {categories.filter(c => !c.parent_id).map(root => renderCategoryCard(root))}
-        </div>
+        </DndContext>
       )}
+    </div>
+  );
+}
+
+function SortableCategoryItem({ 
+  category, 
+  allCategories, 
+  onEdit, 
+  onDelete, 
+  onToggleActive,
+  isEditing,
+  editName,
+  setEditName,
+  editParentId,
+  setEditParentId,
+  onSave,
+  onCancel,
+  onDragEnd
+}: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: category.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+    opacity: isDragging ? 0.5 : 1
+  };
+
+  const subcategories = allCategories
+    .filter((c: any) => c.parent_id === category.id)
+    .sort((a: any, b: any) => a.display_order - b.display_order);
+
+  return (
+    <div ref={setNodeRef} style={style} className="space-y-2">
+      <div className={`
+        group flex items-center gap-4 p-4 rounded-2xl border transition-all bg-white
+        ${isEditing ? 'border-zinc-900 shadow-lg ring-1 ring-zinc-900' : 'border-zinc-200 hover:border-zinc-300 shadow-sm'}
+        ${!category.is_active ? 'opacity-60 grayscale' : ''}
+      `}>
+        <button 
+          {...attributes} 
+          {...listeners}
+          className="p-1 text-zinc-300 hover:text-zinc-600 cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical className="w-5 h-5" />
+        </button>
+
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="flex-1 px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 text-sm font-bold"
+                autoFocus
+              />
+              <select
+                value={editParentId || ''}
+                onChange={(e) => setEditParentId(e.target.value || null)}
+                className="px-3 py-1.5 rounded-lg border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 text-xs bg-white"
+              >
+                <option value="">Primary</option>
+                {allCategories.filter((c: any) => !c.parent_id && c.id !== category.id).map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <h4 className="text-base font-bold text-zinc-900 truncate">{category.name}</h4>
+              {!category.is_active && (
+                <span className="px-2 py-0.5 bg-zinc-100 text-zinc-500 text-[10px] font-black uppercase tracking-widest rounded">Hidden</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {isEditing ? (
+            <>
+              <button onClick={onSave} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><CheckCircle2 className="w-5 h-5" /></button>
+              <button onClick={onCancel} className="p-2 text-zinc-400 hover:bg-zinc-100 rounded-lg transition-colors"><XCircle className="w-5 h-5" /></button>
+            </>
+          ) : (
+            <>
+              <button 
+                onClick={() => onToggleActive(category)} 
+                className={`p-2 rounded-lg transition-colors ${category.is_active ? 'text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50' : 'text-emerald-600 bg-emerald-50'}`}
+                title={category.is_active ? 'Hide Category' : 'Show Category'}
+              >
+                {category.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
+              <button 
+                onClick={() => onEdit(category.id, category.name, category.parent_id)} 
+                className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+                title="Edit"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => onDelete(category.id)} 
+                className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Subcategories */}
+      <div className="ml-12 space-y-2">
+        <DndContext 
+          sensors={useSensors(useSensor(PointerSensor))}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+        >
+          <SortableContext 
+            items={subcategories.map(s => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {subcategories.map(sub => (
+              <SortableSubcategoryItem 
+                key={sub.id} 
+                category={sub} 
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onToggleActive={onToggleActive}
+                isEditing={isEditing && editParentId === category.id} // This is a bit simplified, usually you'd track editingId
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      </div>
+    </div>
+  );
+}
+
+function SortableSubcategoryItem({ category, onEdit, onDelete, onToggleActive }: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: category.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={`
+        group flex items-center gap-3 p-3 rounded-xl border bg-zinc-50/50 transition-all
+        ${!category.is_active ? 'opacity-60 grayscale' : 'border-zinc-100 hover:border-zinc-200 hover:bg-white hover:shadow-sm'}
+      `}
+    >
+      <button 
+        {...attributes} 
+        {...listeners}
+        className="p-1 text-zinc-300 hover:text-zinc-400 cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="w-4 h-4" />
+      </button>
+      
+      <div className="flex-1 min-w-0">
+        <h5 className="text-sm font-medium text-zinc-600 truncate">{category.name}</h5>
+      </div>
+
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={() => onToggleActive(category)} className="p-1.5 text-zinc-400 hover:text-emerald-600 rounded-md transition-colors">
+          {category.is_active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+        </button>
+        <button onClick={() => onEdit(category.id, category.name, category.parent_id)} className="p-1.5 text-zinc-400 hover:text-zinc-900 rounded-md transition-colors">
+          <Edit2 className="w-3.5 h-3.5" />
+        </button>
+        <button onClick={() => onDelete(category.id)} className="p-1.5 text-zinc-400 hover:text-red-600 rounded-md transition-colors">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

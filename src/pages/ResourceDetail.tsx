@@ -24,6 +24,7 @@ export default function ResourceDetail() {
   const [rating, setRating] = useState(5);
 
   useEffect(() => {
+    document.title = "SuperGuide";
     if (id) {
       fetchResource(id);
       fetchFeedback(id);
