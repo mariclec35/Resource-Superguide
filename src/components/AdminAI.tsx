@@ -115,6 +115,33 @@ export default function AdminAI() {
           if (!response.ok) throw new Error('Failed to delete user');
           return { status: 'success', message: `User ${args.id} deleted.` };
         }
+        case 'reset_categories': {
+          const response = await fetch('/api/admin/categories/reset', { method: 'POST' });
+          if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || 'Failed to reset categories');
+          }
+          return { status: 'success', message: 'Categories have been reset to the standard structure from the guide.' };
+        }
+        case 'list_error_logs': {
+          let query = supabase.from('error_events').select('*').order('created_at', { ascending: false });
+          if (args.severity && args.severity !== 'all') query = query.eq('severity', args.severity);
+          if (args.source && args.source !== 'all') query = query.eq('source', args.source);
+          const { data, error } = await query.limit(args.limit || 10);
+          if (error) throw error;
+          return { logs: data };
+        }
+        case 'resolve_error_log': {
+          const { error } = await supabase
+            .from('error_events')
+            .update({ 
+              resolved: true,
+              resolved_at: new Date().toISOString()
+            })
+            .eq('id', args.id);
+          if (error) throw error;
+          return { status: 'success', message: `Error log ${args.id} resolved.` };
+        }
         default:
           return { error: `Unknown tool: ${name}` };
       }
@@ -127,13 +154,22 @@ export default function AdminAI() {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
+      setMessages(prev => [...prev, { 
+        role: 'model', 
+        parts: [{ text: "⚠️ Gemini API Key is missing. Please add your API key to the platform's Secrets/Environment Variables as 'GEMINI_API_KEY' to enable the AI Assistant." }] 
+      }]);
+      return;
+    }
+
     const userMessage: Message = { role: 'user', parts: [{ text: input }] };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       
       const tools = [
         {
@@ -296,6 +332,32 @@ export default function AdminAI() {
                 properties: { id: { type: Type.STRING } },
                 required: ['id']
               }
+            },
+            {
+              name: 'reset_categories',
+              description: 'Reset all categories to the standard structure defined in the guide. This will delete all current categories and recreate them.',
+              parameters: { type: Type.OBJECT, properties: {} }
+            },
+            {
+              name: 'list_error_logs',
+              description: 'List recent error events/logs.',
+              parameters: {
+                type: Type.OBJECT,
+                properties: {
+                  severity: { type: Type.STRING, description: 'critical, error, warning, info' },
+                  source: { type: Type.STRING, description: 'client, api, auth' },
+                  limit: { type: Type.NUMBER }
+                }
+              }
+            },
+            {
+              name: 'resolve_error_log',
+              description: 'Mark an error log as resolved.',
+              parameters: {
+                type: Type.OBJECT,
+                properties: { id: { type: Type.STRING } },
+                required: ['id']
+              }
             }
           ]
         }
@@ -304,7 +366,7 @@ export default function AdminAI() {
       const chat = ai.chats.create({
         model: "gemini-3.1-pro-preview",
         config: {
-          systemInstruction: "You are a highly capable Admin AI Assistant for the SuperGuide platform. Your goal is to help administrators manage the system efficiently. You can perform CRUD operations on resources, categories, and users. You can also review and update community reports. Always be professional, concise, and confirm actions before performing them if they are destructive (like deleting). If you need more information to perform a task, ask the user. You have access to the database through tool calls.",
+          systemInstruction: "You are a highly capable Admin AI Assistant for the SuperGuide platform. Your goal is to help administrators manage the system efficiently. You can perform CRUD operations on resources, categories, and users. You can also review and update community reports and error logs. Always be professional, concise, and confirm actions before performing them if they are destructive (like deleting). If you need more information to perform a task, ask the user. You have access to the database through tool calls.",
           tools: tools
         },
         history: messages.map(m => ({ role: m.role, parts: m.parts }))

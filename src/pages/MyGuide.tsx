@@ -87,12 +87,12 @@ export default function MyGuide() {
         item.address || 'N/A',
         item.phone || 'N/A',
         item.website || 'N/A',
-        item.description?.substring(0, 150) + (item.description && item.description.length > 150 ? '...' : '') || 'N/A'
+        item.provides?.substring(0, 150) + (item.provides && item.provides.length > 150 ? '...' : '') || 'N/A'
       ]);
 
       autoTable(doc, {
         startY: currentY + 5,
-        head: [['Name', 'Address', 'Phone', 'Website', 'Description']],
+        head: [['Name', 'Address', 'Phone', 'Website', 'Services']],
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: [16, 185, 129] }, // Emerald-500

@@ -6,7 +6,8 @@ import {
   Settings, LogOut, Loader2, Search, Filter,
   CheckCircle2, XCircle, Clock, MoreVertical,
   Edit2, Trash2, ExternalLink, ShieldAlert, Terminal,
-  ChevronDown, ChevronUp, Users, LayoutGrid, Upload, Bot
+  ChevronDown, ChevronUp, Users, LayoutGrid, Upload, Bot, RefreshCcw,
+  BarChart3, Star, BookOpen, TrendingUp, ThumbsUp, ThumbsDown
 } from 'lucide-react';
 import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
@@ -15,7 +16,7 @@ import DataImporter from '../components/DataImporter';
 import AdminAI from '../components/AdminAI';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'resources' | 'reports' | 'categories' | 'errors' | 'users' | 'import' | 'ai'>('categories');
+  const [activeTab, setActiveTab] = useState<'overview' | 'resources' | 'reports' | 'categories' | 'errors' | 'users' | 'import' | 'ai' | 'analytics' | 'feedback'>('overview');
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
@@ -74,36 +75,62 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="flex border-b border-zinc-200 mb-8">
+      <div className="flex border-b border-zinc-200 overflow-x-auto no-scrollbar mb-8">
         <button
-          onClick={() => setActiveTab('categories')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
-            activeTab === 'categories' 
-              ? 'border-zinc-900 text-zinc-900' 
-              : 'border-transparent text-zinc-400 hover:text-zinc-600'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            Categories Manager
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab('resources')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
-            activeTab === 'resources' 
+          onClick={() => setActiveTab('overview')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
+            activeTab === 'overview' 
               ? 'border-zinc-900 text-zinc-900' 
               : 'border-transparent text-zinc-400 hover:text-zinc-600'
           }`}
         >
           <div className="flex items-center gap-2">
             <LayoutDashboard className="w-4 h-4" />
-            Resources Manager
+            Overview
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('resources')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
+            activeTab === 'resources' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Resources
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('feedback')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
+            activeTab === 'feedback' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4" />
+            Feedback
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
+            activeTab === 'analytics' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Analytics
           </div>
         </button>
         <button
           onClick={() => setActiveTab('reports')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'reports' 
               ? 'border-zinc-900 text-zinc-900' 
               : 'border-transparent text-zinc-400 hover:text-zinc-600'
@@ -111,12 +138,25 @@ export default function AdminDashboard() {
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
-            Reports Queue
+            Reports
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
+            activeTab === 'categories' 
+              ? 'border-zinc-900 text-zinc-900' 
+              : 'border-transparent text-zinc-400 hover:text-zinc-600'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Categories
           </div>
         </button>
         <button
           onClick={() => setActiveTab('errors')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'errors' 
               ? 'border-zinc-900 text-zinc-900' 
               : 'border-transparent text-zinc-400 hover:text-zinc-600'
@@ -124,12 +164,12 @@ export default function AdminDashboard() {
         >
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-4 h-4" />
-            Error Logs
+            Errors
           </div>
         </button>
         <button
           onClick={() => setActiveTab('users')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'users' 
               ? 'border-zinc-900 text-zinc-900' 
               : 'border-transparent text-zinc-400 hover:text-zinc-600'
@@ -137,12 +177,12 @@ export default function AdminDashboard() {
         >
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4" />
-            Admin Users
+            Users
           </div>
         </button>
         <button
           onClick={() => setActiveTab('ai')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'ai' 
               ? 'border-zinc-900 text-zinc-900' 
               : 'border-transparent text-zinc-400 hover:text-zinc-600'
@@ -155,7 +195,7 @@ export default function AdminDashboard() {
         </button>
         <button
           onClick={() => setActiveTab('import')}
-          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${
+          className={`px-6 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${
             activeTab === 'import' 
               ? 'border-zinc-900 text-zinc-900' 
               : 'border-transparent text-zinc-400 hover:text-zinc-600'
@@ -163,11 +203,12 @@ export default function AdminDashboard() {
         >
           <div className="flex items-center gap-2">
             <Upload className="w-4 h-4" />
-            Import Data
+            Import
           </div>
         </button>
       </div>
 
+      {activeTab === 'overview' && <Overview />}
       {activeTab === 'resources' && <ResourcesManager />}
       {activeTab === 'reports' && <ReportsQueue />}
       {activeTab === 'categories' && <CategoriesManager />}
@@ -175,6 +216,325 @@ export default function AdminDashboard() {
       {activeTab === 'users' && <UsersManager />}
       {activeTab === 'import' && <DataImporter />}
       {activeTab === 'ai' && <AdminAI />}
+      {activeTab === 'analytics' && <SearchAnalyticsDashboard />}
+      {activeTab === 'feedback' && <FeedbackModeration />}
+    </div>
+  );
+}
+
+// --- Sub-components ---
+
+function Overview() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    setLoading(true);
+    try {
+      const [
+        { count: totalResources },
+        { count: totalSearches },
+        { count: totalFeedback },
+        { count: pendingFeedback },
+        { count: approvedFeedback },
+        { count: rejectedFeedback },
+        { data: topResources }
+      ] = await Promise.all([
+        supabase.from('resources').select('*', { count: 'exact', head: true }),
+        supabase.from('search_analytics').select('*', { count: 'exact', head: true }),
+        supabase.from('resource_feedback').select('*', { count: 'exact', head: true }),
+        supabase.from('resource_feedback').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('resource_feedback').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
+        supabase.from('resource_feedback').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
+        supabase.from('resources').select('name, review_count, average_rating').order('review_count', { ascending: false }).limit(5)
+      ]);
+
+      setStats({
+        totalResources,
+        totalSearches,
+        totalFeedback,
+        pendingFeedback,
+        approvedFeedback,
+        rejectedFeedback,
+        topResources
+      });
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>;
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Total Resources" value={stats?.totalResources || 0} icon={<BookOpen className="w-5 h-5" />} color="zinc" />
+        <StatCard title="AI Searches" value={stats?.totalSearches || 0} icon={<BarChart3 className="w-5 h-5" />} color="emerald" />
+        <StatCard title="Pending Reviews" value={stats?.pendingFeedback || 0} icon={<Star className="w-5 h-5" />} color="amber" />
+        <StatCard title="Total Feedback" value={stats?.totalFeedback || 0} icon={<ThumbsUp className="w-5 h-5" />} color="indigo" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white border border-zinc-200 rounded-2xl p-6">
+          <h3 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Most Reviewed Resources
+          </h3>
+          <div className="space-y-4">
+            {stats?.topResources?.map((r: any, i: number) => (
+              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 border border-zinc-100">
+                <div>
+                  <p className="font-bold text-zinc-900">{r.name}</p>
+                  <div className="flex items-center gap-1">
+                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                    <span className="text-xs font-bold text-zinc-600">{r.average_rating?.toFixed(1) || '0.0'}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-black text-zinc-900">{r.review_count || 0}</p>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Reviews</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white border border-zinc-200 rounded-2xl p-6">
+          <h3 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4" />
+            System Health
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-100 bg-emerald-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-sm font-bold text-emerald-900">AI Extraction Engine</p>
+              </div>
+              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Operational</span>
+            </div>
+            <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-100 bg-emerald-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-sm font-bold text-emerald-900">Database Sync</p>
+              </div>
+              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Connected</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ title, value, icon, color }: { title: string, value: number | string, icon: React.ReactNode, color: string }) {
+  const colors: any = {
+    zinc: 'bg-zinc-50 border-zinc-200 text-zinc-900',
+    emerald: 'bg-emerald-50 border-emerald-100 text-emerald-900',
+    amber: 'bg-amber-50 border-amber-100 text-amber-900',
+    indigo: 'bg-indigo-50 border-indigo-100 text-indigo-900',
+  };
+
+  const iconColors: any = {
+    zinc: 'bg-zinc-100 text-zinc-600',
+    emerald: 'bg-emerald-100 text-emerald-600',
+    amber: 'bg-amber-100 text-amber-600',
+    indigo: 'bg-indigo-100 text-indigo-600',
+  };
+
+  return (
+    <div className={`p-6 rounded-2xl border ${colors[color]} shadow-sm`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-2 rounded-lg ${iconColors[color]}`}>
+          {icon}
+        </div>
+      </div>
+      <p className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">{title}</p>
+      <p className="text-3xl font-black tracking-tight">{value}</p>
+    </div>
+  );
+}
+
+function SearchAnalyticsDashboard() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('search_analytics')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (!error) setLogs(data || []);
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-black text-zinc-900 tracking-tight">AI Search Analytics</h2>
+        <button onClick={fetchLogs} className="p-2 rounded-lg hover:bg-zinc-100 transition-all">
+          <RefreshCcw className="w-4 h-4 text-zinc-400" />
+        </button>
+      </div>
+
+      <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-zinc-50 border-b border-zinc-200">
+              <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">User Prompt</th>
+              <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">AI Extraction</th>
+              <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Results</th>
+              <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Time</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100">
+            {logs.map((log) => (
+              <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
+                <td className="px-6 py-4 max-w-xs">
+                  <p className="text-sm text-zinc-900 line-clamp-2 font-medium">"{log.raw_prompt}"</p>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-wrap gap-1">
+                    {log.extracted_needs?.need_types?.map((n: string, i: number) => (
+                      <span key={i} className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 text-[10px] font-bold uppercase tracking-wider">
+                        {n}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className={`text-sm font-black ${log.results_count > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {log.results_count} matches
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <p className="text-xs text-zinc-400">{format(new Date(log.created_at), 'MMM d, HH:mm')}</p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function FeedbackModeration() {
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeedbacks();
+  }, []);
+
+  const fetchFeedbacks = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('resource_feedback')
+      .select('*, resources(name)')
+      .order('created_at', { ascending: false });
+    
+    if (!error) setFeedbacks(data || []);
+    setLoading(false);
+  };
+
+  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
+    const { error } = await supabase
+      .from('resource_feedback')
+      .update({ status })
+      .eq('id', id);
+    
+    if (!error) fetchFeedbacks();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-black text-zinc-900 tracking-tight">Feedback Moderation</h2>
+        <button onClick={fetchFeedbacks} className="p-2 rounded-lg hover:bg-zinc-100 transition-all">
+          <RefreshCcw className="w-4 h-4 text-zinc-400" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {feedbacks.map((f) => (
+          <div key={f.id} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-black text-zinc-900">{f.guest_name || 'Anonymous'}</p>
+                  <span className="text-zinc-300">•</span>
+                  <p className="text-sm font-bold text-emerald-600">{f.resources?.name}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} className={`w-3 h-3 ${s <= f.rating_overall ? 'text-amber-400 fill-amber-400' : 'text-zinc-200'}`} />
+                    ))}
+                  </div>
+                  <span className="text-xs text-zinc-400">{format(new Date(f.created_at), 'MMM d, yyyy')}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {f.status === 'pending' ? (
+                  <>
+                    <button
+                      onClick={() => handleUpdateStatus(f.id, 'rejected')}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-200 text-zinc-500 font-bold text-sm hover:bg-red-50 hover:text-red-600 transition-all"
+                    >
+                      <ThumbsDown className="w-4 h-4" />
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => handleUpdateStatus(f.id, 'approved')}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                      Approve
+                    </button>
+                  </>
+                ) : (
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                    f.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {f.status}
+                  </span>
+                )}
+              </div>
+            </div>
+            <p className="text-zinc-700 leading-relaxed italic">"{f.review_text}"</p>
+            <div className="mt-4 pt-4 border-t border-zinc-50 flex flex-wrap gap-6">
+              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                Accessibility: <span className="text-zinc-900">{f.rating_accessibility}/5</span>
+              </div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                Staff: <span className="text-zinc-900">{f.rating_staff}/5</span>
+              </div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                Usefulness: <span className="text-zinc-900">{f.rating_usefulness}/5</span>
+              </div>
+            </div>
+          </div>
+        ))}
+        {feedbacks.length === 0 && (
+          <div className="text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
+            <Star className="w-10 h-10 text-zinc-300 mx-auto mb-3" />
+            <p className="text-zinc-500 font-medium">No feedback submissions found.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -599,6 +959,28 @@ function CategoriesManager() {
     }
   };
 
+  const handleReset = async () => {
+    if (confirm('Are you sure you want to reset ALL categories? This will delete all current categories and replace them with the standard set from the guide. This action cannot be undone.')) {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/admin/categories/reset', {
+          method: 'POST',
+        });
+        if (response.ok) {
+          alert('Categories reset successfully!');
+          fetchCategories();
+        } else {
+          const err = await response.json();
+          alert('Error resetting categories: ' + (err.error || 'Unknown error'));
+        }
+      } catch (err: any) {
+        alert('Error resetting categories: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const getParentName = (parentId: string | null | undefined) => {
     if (!parentId) return null;
     return categories.find(c => c.id === parentId)?.name;
@@ -744,9 +1126,18 @@ function CategoriesManager() {
     <div className="space-y-8 max-w-3xl">
       {/* Add Category Form */}
       <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Plus className="w-5 h-5 text-zinc-900" />
-          <h3 className="font-bold text-zinc-900">Add New Category</h3>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <Plus className="w-5 h-5 text-zinc-900" />
+            <h3 className="font-bold text-zinc-900">Add New Category</h3>
+          </div>
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all border border-red-100"
+          >
+            <RefreshCcw className="w-4 h-4" />
+            Reset to Standard
+          </button>
         </div>
         <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-12 gap-3">
           <div className="md:col-span-5">
@@ -914,10 +1305,15 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
     const data = {
       name: formData.get('name') as string,
       category: formData.get('category') as string,
+      subcategory: (formData.get('subcategory') as string) || null,
       address: formData.get('address') as string,
+      city: (formData.get('city') as string) || null,
       phone: (formData.get('phone') as string) || null,
       website: (formData.get('website') as string) || null,
-      description: (formData.get('description') as string) || null,
+      provides: (formData.get('provides') as string) || null,
+      remarks: (formData.get('remarks') as string) || null,
+      details: (formData.get('details') as string) || null,
+      hours: (formData.get('hours') as string) || null,
       status: (formData.get('status') as string) || 'active',
     };
 
@@ -971,6 +1367,10 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
                 </select>
               </div>
               <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Subcategory</label>
+                <input name="subcategory" defaultValue={resource?.subcategory || ''} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
+              </div>
+              <div>
                 <label className="block text-xs font-bold text-zinc-500 mb-1.5">Status</label>
                 <select name="status" defaultValue={resource?.status} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all bg-white">
                   <option value="active">Active</option>
@@ -982,9 +1382,15 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
 
             <div className="space-y-6">
               <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Contact & Details</h3>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Address</label>
-                <input name="address" defaultValue={resource?.address} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 mb-1.5">Address</label>
+                  <input name="address" defaultValue={resource?.address} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 mb-1.5">City</label>
+                  <input name="city" defaultValue={resource?.city || ''} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -997,8 +1403,20 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Description</label>
-                <textarea name="description" defaultValue={resource?.description || ''} rows={4} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Hours</label>
+                <textarea name="hours" defaultValue={resource?.hours || ''} rows={2} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">What they provide</label>
+                <textarea name="provides" defaultValue={resource?.provides || ''} rows={3} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Important Remarks</label>
+                <textarea name="remarks" defaultValue={resource?.remarks || ''} rows={2} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Additional Details</label>
+                <textarea name="details" defaultValue={resource?.details || ''} rows={2} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
               </div>
             </div>
           </div>

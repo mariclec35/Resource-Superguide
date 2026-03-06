@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
+import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
 
@@ -20,6 +21,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 // Seed requested admin user immediately
 (async () => {
@@ -193,6 +195,129 @@ app.post("/api/admin/users/:id/reset-password", async (req, res) => {
   } catch (err: any) {
     console.error("Failed to reset password:", err);
     res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+// API: Reset Categories
+app.post("/api/admin/categories/reset", async (req, res) => {
+  try {
+    // 1. Delete all existing categories
+    const { error: deleteError } = await supabase.from("categories").delete().neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
+    if (deleteError) throw deleteError;
+
+    const newCategories = [
+      { name: "The Basics", sub: ["Clothes", "Food Resources", "Free Meals", "Showers", "Drop-in Centers", "Overnight Shelter", "Transitional & Supportive Housing", "Housing Assistance", "Furniture", "Advocacy & Case Management", "Pet Resources"] },
+      { name: "Public Assistance", sub: ["Minnesota Family Investment Program (MFIP)", "Emergency Assistance / Emergency GA (EA/EGA)", "Energy Assistance", "Supplemental Nutrition Assistance Program", "General Assistance (GA)", "Medical Assistance & MinnesotaCare", "Minnesota Supplemental Aid (MSA)", "Social Security"] },
+      { name: "Health Care", sub: ["Community Clinics", "Health Care for the Homeless", "HIV / STI / Pregnancy Testing", "Dental Care", "Mental Health Services", "Veterans", "Youth", "Substance Use Disorder Counseling & Treatment"] },
+      { name: "Education & Employment", sub: ["Educational Programs", "Job Training & Placement", "Day and Temporary Labor"] },
+      { name: "Special Help & Advocacy", sub: ["Youth Programs", "Services for Immigrants", "Help for Veterans", "Victims of Abuse and Crime", "Legal Assistance", "Police Misconduct", "Programs for Ex-Offenders"] }
+    ];
+
+    for (let i = 0; i < newCategories.length; i++) {
+      const primary = newCategories[i];
+      const { data: primaryData, error: primaryError } = await supabase
+        .from("categories")
+        .insert({ name: primary.name, sequence: (i + 1) * 10 })
+        .select()
+        .single();
+
+      if (primaryError) throw primaryError;
+
+      const subInserts = primary.sub.map((name, index) => ({
+        name,
+        parent_id: primaryData.id,
+        sequence: (index + 1)
+      }));
+
+      const { error: subError } = await supabase.from("categories").insert(subInserts);
+      if (subError) throw subError;
+    }
+
+    res.status(200).json({ status: "ok", message: "Categories reset successfully" });
+  } catch (err: any) {
+    console.error("Failed to reset categories:", err);
+    res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+// API: AI Search Extraction
+app.post("/api/search/extract", async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        systemInstruction: `Extract structured needs from the user's community resource request.
+Return a JSON object with:
+- need_types: string[] (housing, shelter, food, treatment, recovery support, employment, transportation, legal, healthcare, mental health, youth services, family services, domestic violence support, financial assistance)
+- urgency: string (immediate, this_week, ongoing)
+- location: string | null
+- preferences: string[]
+- barriers: string[]
+- eligibility_clues: string[]
+- keywords: string[]
+- ai_summary: string (A short interpretation of the user's needs)`,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            need_types: { type: Type.ARRAY, items: { type: Type.STRING } },
+            urgency: { type: Type.STRING },
+            location: { type: Type.STRING, nullable: true },
+            preferences: { type: Type.ARRAY, items: { type: Type.STRING } },
+            barriers: { type: Type.ARRAY, items: { type: Type.STRING } },
+            eligibility_clues: { type: Type.ARRAY, items: { type: Type.STRING } },
+            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+            ai_summary: { type: Type.STRING }
+          },
+          required: ["need_types", "urgency", "preferences", "barriers", "eligibility_clues", "keywords", "ai_summary"]
+        }
+      }
+    });
+
+    const extraction = JSON.parse(response.text || "{}");
+    res.json(extraction);
+  } catch (err: any) {
+    console.error("Extraction error:", err);
+    res.status(500).json({ error: "Failed to extract search intent" });
+  }
+});
+
+// API: Search Analytics
+app.post("/api/search/analytics", async (req, res) => {
+  const { 
+    raw_prompt, 
+    extracted_needs_json, 
+    inferred_location, 
+    inferred_urgency, 
+    inferred_need_types, 
+    results_count, 
+    matched_resource_ids, 
+    search_success,
+    session_id
+  } = req.body;
+
+  try {
+    const { error } = await supabase.from("search_analytics").insert({
+      raw_prompt,
+      extracted_needs_json,
+      inferred_location,
+      inferred_urgency,
+      inferred_need_types,
+      results_count,
+      matched_resource_ids,
+      search_success,
+      session_id
+    });
+
+    if (error) throw error;
+    res.status(200).json({ status: "ok" });
+  } catch (err: any) {
+    console.error("Analytics logging error:", err);
+    res.status(500).json({ error: "Failed to log analytics" });
   }
 });
 

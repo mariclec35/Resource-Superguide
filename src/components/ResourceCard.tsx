@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Globe, Phone, Info, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { MapPin, Globe, Phone, Info, CheckCircle2, AlertTriangle, ExternalLink, Sparkles } from 'lucide-react';
 import { Resource } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -17,22 +17,32 @@ interface ResourceCardProps {
 }
 
 export default function ResourceCard({ resource, inGuide, onToggleGuide }: ResourceCardProps) {
+  const matchReasons = (resource as any).matchReasons as string[] | undefined;
+
   return (
-    <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col h-full">
+    <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col h-full group">
       <div className="p-5 flex-1">
         <div className="flex justify-between items-start gap-4 mb-3">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-zinc-100 text-zinc-600">
             {resource.category}
           </span>
-          {resource.status === 'needs_verification' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600">
-              <AlertTriangle className="w-3 h-3" />
-              Verify
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {resource.average_rating && (
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold">
+                <CheckCircle2 className="w-3 h-3" />
+                {resource.average_rating.toFixed(1)} ({resource.review_count || 0})
+              </div>
+            )}
+            {resource.status === 'needs_verification' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600">
+                <AlertTriangle className="w-3 h-3" />
+                Verify
+              </span>
+            )}
+          </div>
         </div>
 
-        <Link to={`/resource/${resource.id}`} className="block group">
+        <Link to={`/resource/${resource.id}`} className="block">
           <h3 className="text-lg font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors mb-2">
             {resource.name}
           </h3>
@@ -41,35 +51,30 @@ export default function ResourceCard({ resource, inGuide, onToggleGuide }: Resou
         <div className="space-y-2.5 mb-4">
           <div className="flex items-start gap-2 text-sm text-zinc-600">
             <MapPin className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
-            <span>{resource.address || 'No address listed'}</span>
+            <span className="truncate">{resource.city ? `${resource.city}, ` : ''}{resource.address || 'No address listed'}</span>
           </div>
-          
-          {resource.phone && (
-            <div className="flex items-center gap-2 text-sm text-zinc-600">
-              <Phone className="w-4 h-4 text-zinc-400 shrink-0" />
-              <a href={`tel:${resource.phone}`} className="hover:text-emerald-600 transition-colors">{resource.phone}</a>
-            </div>
-          )}
-
-          {resource.website && (
-            <div className="flex items-center gap-2 text-sm text-zinc-600">
-              <Globe className="w-4 h-4 text-zinc-400 shrink-0" />
-              <a 
-                href={resource.website.startsWith('http') ? resource.website : `https://${resource.website}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="hover:text-emerald-600 transition-colors truncate flex items-center gap-1"
-              >
-                Website
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          )}
         </div>
 
-        {resource.description && (
-          <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed italic">
-            "{resource.description}"
+        {matchReasons && matchReasons.length > 0 && (
+          <div className="mb-4 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100/50">
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-2 flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3" />
+              Why it matches
+            </p>
+            <ul className="space-y-1">
+              {matchReasons.slice(0, 2).map((reason, i) => (
+                <li key={i} className="text-xs text-emerald-800 flex items-start gap-1.5">
+                  <div className="w-1 h-1 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
+                  {reason}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {resource.provides && (
+          <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed">
+            {resource.provides}
           </p>
         )}
       </div>
