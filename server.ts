@@ -271,6 +271,38 @@ app.post("/api/admin/categories/reset", async (req, res) => {
   }
 });
 
+// API: Maintenance - Clear Categories and Set Resources to Pending
+app.post("/api/admin/maintenance/clear-and-pending", async (req, res) => {
+  try {
+    console.log("Starting maintenance: Clear categories and set resources to pending");
+    
+    // 1. Delete all categories
+    const { error: catError } = await supabase
+      .from("categories")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+    
+    if (catError) throw catError;
+
+    // 2. Update all resources to pending
+    const { error: resError } = await supabase
+      .from("resources")
+      .update({ status: "pending" })
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+    
+    if (resError) throw resError;
+
+    console.log("Maintenance completed successfully");
+    res.status(200).json({ 
+      status: "ok", 
+      message: "Successfully removed all categories and marked all resources as pending." 
+    });
+  } catch (err: any) {
+    console.error("Maintenance reset error:", err);
+    res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
 // API: Search Analytics
 app.post("/api/search/analytics", async (req, res) => {
   const { 

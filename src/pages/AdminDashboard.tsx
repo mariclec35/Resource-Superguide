@@ -26,7 +26,7 @@ import {
   ChevronDown, ChevronUp, Users, LayoutGrid, Upload, Bot, RefreshCcw,
   BarChart3, Star, BookOpen, TrendingUp, ThumbsUp, ThumbsDown,
   GripVertical, Eye, EyeOff, Activity, Database, Layers, MessageSquare,
-  Sparkles, AlertTriangle, ArrowRight
+  Sparkles, AlertTriangle, ArrowRight, Wrench
 } from 'lucide-react';
 import { Resource, Report, ReportStatus, ResourceStatus, Category, ErrorEvent } from '../types';
 import { format } from 'date-fns';
@@ -84,6 +84,7 @@ export default function AdminDashboard() {
     { id: 'errors', label: 'Site Health', icon: <Activity className="w-4 h-4" /> },
     { id: 'import', label: 'Data Operations', icon: <Database className="w-4 h-4" /> },
     { id: 'ai', label: 'Intelligence', icon: <Bot className="w-4 h-4" /> },
+    { id: 'maintenance', label: 'Maintenance', icon: <Wrench className="w-4 h-4" /> },
   ];
 
   return (
@@ -184,12 +185,115 @@ export default function AdminDashboard() {
         {activeTab === 'errors' && <ErrorLogsManager />}
         {activeTab === 'import' && <DataImporter />}
         {activeTab === 'ai' && <AdminAI />}
+        {activeTab === 'maintenance' && <MaintenanceManager />}
       </div>
     </div>
   );
 }
 
 // --- Sub-components ---
+
+function MaintenanceManager() {
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  const handleResetAll = async () => {
+    if (!confirm('CRITICAL ACTION: This will REMOVE ALL categories and mark ALL resources as PENDING. This cannot be undone. Are you sure?')) {
+      return;
+    }
+
+    setLoading(true);
+    setStatus(null);
+
+    try {
+      const response = await fetch('/api/admin/maintenance/clear-and-pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus({ type: 'success', message: data.message });
+      } else {
+        throw new Error(data.error || 'Failed to perform maintenance');
+      }
+    } catch (err: any) {
+      setStatus({ type: 'error', message: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-600">
+            <Wrench className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-zinc-900 tracking-tight">System Maintenance</h2>
+            <p className="text-sm text-zinc-500">Perform critical system-wide operations.</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl border border-red-100 bg-red-50/30 space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-black text-red-900 uppercase tracking-wider">Reset Database State</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  This action will delete all entries in the categories table and update every resource to a "pending" status. 
+                  This is typically used when preparing for a fresh data verification cycle or after a major schema change.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 pt-2">
+              <button
+                onClick={handleResetAll}
+                disabled={loading}
+                className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Clear Categories & Mark All Pending
+              </button>
+            </div>
+          </div>
+
+          {status && (
+            <div className={`p-4 rounded-xl flex items-center gap-3 ${
+              status.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+            }`}>
+              {status.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+              <p className="text-sm font-bold">{status.message}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-zinc-900 p-8 rounded-3xl text-white">
+        <h3 className="text-lg font-black tracking-tight mb-4">Maintenance Guidelines</h3>
+        <ul className="space-y-3 text-sm text-zinc-400">
+          <li className="flex items-start gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 mt-1.5 shrink-0" />
+            Always ensure you have a database backup before performing destructive operations.
+          </li>
+          <li className="flex items-start gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 mt-1.5 shrink-0" />
+            Marking resources as pending will hide them from the public search if your frontend filters for "active" status.
+          </li>
+          <li className="flex items-start gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 mt-1.5 shrink-0" />
+            Deleting categories will leave resources with category labels that no longer exist in the reference table.
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
 
 function Overview() {
   const [stats, setStats] = useState<any>(null);
