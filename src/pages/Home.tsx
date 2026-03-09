@@ -5,6 +5,12 @@ import ResourceCard from '../components/ResourceCard';
 import { Search, Loader2, Sparkles, ArrowRight, Info, LayoutGrid, MapPin, ChevronDown, Moon, Users, Utensils, Briefcase, Car, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI, Type } from "@google/genai";
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 const PRIMARY_CATEGORIES = [
   "Housing",
@@ -74,7 +80,6 @@ export default function Home() {
         .from('resources')
         .select('*')
         .neq('status', 'temporarily_closed')
-        .neq('status', 'needs_verification')
         .order('name');
 
       if (resError) throw resError;
@@ -94,8 +99,11 @@ export default function Home() {
     setHasSearched(true);
     try {
       const env = typeof window !== 'undefined' ? (window as any).ENV || {} : {};
-      const apiKey = env.GEMINI_API_KEY || import.meta.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey || apiKey === 'undefined') throw new Error("Gemini API Key is missing");
+      const apiKey = env.GEMINI_API_KEY || import.meta.env.VITE_CUSTOM_GEMINI_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
+      
+      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+        throw new Error("API_KEY_MISSING");
+      }
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
@@ -151,35 +159,64 @@ Return a JSON object with:
 
       setAiExtraction(extraction);
 
+      const promptWords = aiPrompt.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+
       const matched = resources.map(r => {
         let score = 0;
         const reasons: string[] = [];
         
         const needTypes = Array.isArray(extraction.need_types) ? extraction.need_types : [];
-        const catMatch = needTypes.some((nt: string) => 
-          (r.category || '').toLowerCase().includes(nt.toLowerCase()) || 
-          (r.subcategory || '').toLowerCase().includes(nt.toLowerCase())
-        );
+        const resourceCategory = (r.category || '').toLowerCase();
+        const resourceSubcategory = (r.subcategory || '').toLowerCase();
+        const resourceProvides = (r.provides || '').toLowerCase();
+        const resourceName = (r.name || '').toLowerCase();
+        const resourceDetails = (r.details || '').toLowerCase();
+        const resourceRemarks = (r.remarks || '').toLowerCase();
+        const searchFields = [resourceName, resourceCategory, resourceSubcategory, resourceProvides, resourceRemarks, resourceDetails].join(' ');
+
+        // 1. Category Matching (Flexible)
+        const catMatch = needTypes.some((nt: string) => {
+          const ntLower = nt.toLowerCase();
+          return resourceCategory.includes(ntLower) || 
+                 resourceSubcategory.includes(ntLower) ||
+                 ntLower.includes(resourceCategory) ||
+                 (resourceCategory && ntLower.split(/\W+/).some(word => resourceCategory.includes(word)));
+        });
+
         if (catMatch) {
-          score += 10;
+          score += 15;
           reasons.push(`Matches your need for ${needTypes.join(', ')}`);
         }
 
-        if (extraction.location && (r.city || '').toLowerCase().includes(extraction.location.toLowerCase())) {
-          score += 15;
-          reasons.push(`Located in ${extraction.location}`);
+        // 2. Location Matching
+        if (extraction.location) {
+          const locLower = extraction.location.toLowerCase();
+          const cityLower = (r.city || '').toLowerCase();
+          const addrLower = (r.address || '').toLowerCase();
+          if (cityLower.includes(locLower) || locLower.includes(cityLower) || addrLower.includes(locLower)) {
+            score += 20;
+            reasons.push(`Located in or near ${extraction.location}`);
+          }
         }
 
-        const searchFields = [r.name || '', r.provides || '', r.remarks || '', r.details || ''].join(' ').toLowerCase();
+        // 3. Keyword Matching (AI Extracted)
         const keywords = Array.isArray(extraction.keywords) ? extraction.keywords : [];
         const matchedKeywords = keywords.filter((kw: string) => searchFields.includes(kw.toLowerCase()));
         if (matchedKeywords.length > 0) {
-          score += matchedKeywords.length * 5;
+          score += matchedKeywords.length * 8;
           reasons.push(`Matches keywords: ${matchedKeywords.join(', ')}`);
         }
 
-        if (extraction.urgency === 'immediate' && (searchFields.includes('emergency') || searchFields.includes('shelter') || searchFields.includes('urgent'))) {
-          score += 10;
+        // 4. Raw Prompt Word Matching (Fallback/Boost)
+        const matchedPromptWords = promptWords.filter(word => searchFields.includes(word));
+        if (matchedPromptWords.length > 0) {
+          score += matchedPromptWords.length * 2;
+          if (reasons.length === 0) reasons.push('Matches your search terms');
+        }
+
+        // 5. Urgency Boost
+        if (extraction.urgency === 'immediate' && (searchFields.includes('emergency') || searchFields.includes('shelter') || searchFields.includes('urgent') || searchFields.includes('crisis'))) {
+          score += 15;
           reasons.push('Offers immediate/emergency support');
         }
 
@@ -210,21 +247,47 @@ Return a JSON object with:
         console.error('Analytics error:', analyticsErr);
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('AI Search error:', err);
+      
+      const isKeyMissing = err.message === "API_KEY_MISSING";
+      
       // Fallback to basic keyword search if AI fails completely
-      const keywords = aiPrompt.toLowerCase().split(' ').filter(w => w.length > 3);
+      const keywords = aiPrompt.toLowerCase().split(/\W+/).filter(w => w.length > 2);
       const matched = resources.map(r => {
-        const searchFields = [r.name || '', r.category || '', r.subcategory || '', r.provides || '', r.remarks || '', r.details || ''].join(' ').toLowerCase();
+        const searchFields = [
+          r.name || '', 
+          r.category || '', 
+          r.subcategory || '', 
+          r.provides || '', 
+          r.remarks || '', 
+          r.details || '',
+          r.city || '',
+          r.address || ''
+        ].join(' ').toLowerCase();
+        
         const matchedKeywords = keywords.filter(kw => searchFields.includes(kw));
-        return { ...r, matchScore: matchedKeywords.length, matchReasons: matchedKeywords.length > 0 ? ['Matches your search keywords'] : [] };
+        // Give higher weight to name matches
+        const nameMatch = keywords.some(kw => (r.name || '').toLowerCase().includes(kw));
+        
+        const score = (matchedKeywords.length * 5) + (nameMatch ? 10 : 0);
+        
+        return { 
+          ...r, 
+          matchScore: score, 
+          matchReasons: matchedKeywords.length > 0 ? [`Matches keywords: ${matchedKeywords.slice(0, 3).join(', ')}`] : [] 
+        };
       }).filter(r => r.matchScore > 0).sort((a, b) => b.matchScore - a.matchScore);
       
       setFilteredResources(matched);
       setAiExtraction({
-        ai_summary: "We experienced an issue with our AI service, but we searched using your keywords instead.",
+        ai_summary: isKeyMissing 
+          ? "The AI search is currently unavailable because the API key is not configured in the live environment. We've performed a standard keyword search for you instead."
+          : "We experienced an issue with our AI service, but we searched using your keywords instead.",
         need_types: [],
-        keywords: keywords
+        keywords: keywords,
+        is_error: true,
+        error_type: isKeyMissing ? 'key_missing' : 'general'
       });
     } finally {
       setIsSearching(false);
@@ -543,16 +606,33 @@ Return a JSON object with:
             className="space-y-8"
           >
             {aiExtraction && (
-              <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-6 md:p-8 shadow-sm">
+              <div className={cn(
+                "rounded-3xl p-6 md:p-8 shadow-sm border",
+                aiExtraction.is_error ? "bg-amber-50 border-amber-100" : "bg-emerald-50 border-emerald-100"
+              )}>
                 <div className="flex items-start gap-4">
-                  <div className="bg-emerald-600 p-3 rounded-2xl shadow-lg shadow-emerald-200 shrink-0">
-                    <Sparkles className="w-6 h-6 text-white" />
+                  <div className={cn(
+                    "p-3 rounded-2xl shadow-lg shrink-0",
+                    aiExtraction.is_error ? "bg-amber-600 shadow-amber-200" : "bg-emerald-600 shadow-emerald-200"
+                  )}>
+                    {aiExtraction.is_error ? <Info className="w-6 h-6 text-white" /> : <Sparkles className="w-6 h-6 text-white" />}
                   </div>
                   <div>
-                    <h2 className="text-xl md:text-2xl font-black text-zinc-900 mb-2 tracking-tight">AI Interpretation</h2>
-                    <p className="text-emerald-900 text-base md:text-lg leading-relaxed font-medium">
+                    <h2 className="text-xl md:text-2xl font-black text-zinc-900 mb-2 tracking-tight">
+                      {aiExtraction.is_error ? "Search Notice" : "AI Interpretation"}
+                    </h2>
+                    <p className={cn(
+                      "text-base md:text-lg leading-relaxed font-medium",
+                      aiExtraction.is_error ? "text-amber-900" : "text-emerald-900"
+                    )}>
                       {aiExtraction.ai_summary}
                     </p>
+                    {aiExtraction.error_type === 'key_missing' && (
+                      <div className="mt-4 p-4 bg-white/50 rounded-xl border border-amber-200 text-sm text-amber-800">
+                        <p className="font-bold mb-1">Administrator Note:</p>
+                        <p>To enable AI-powered search in the live environment, please add the <code className="bg-amber-100 px-1 rounded">GEMINI_API_KEY</code> to your environment variables in your deployment dashboard (e.g., Vercel, Cloud Run, or Supabase Edge Functions).</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

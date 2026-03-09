@@ -198,7 +198,7 @@ function MaintenanceManager() {
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const handleResetAll = async () => {
-    if (!confirm('CRITICAL ACTION: This will REMOVE ALL categories and mark ALL resources as PENDING. This cannot be undone. Are you sure?')) {
+    if (!confirm('CRITICAL ACTION: This will REMOVE ALL categories and mark ALL resources as NEEDS VERIFICATION. This cannot be undone. Are you sure?')) {
       return;
     }
 
@@ -245,7 +245,7 @@ function MaintenanceManager() {
               <div>
                 <h3 className="text-sm font-black text-red-900 uppercase tracking-wider">Reset Database State</h3>
                 <p className="text-sm text-red-700 mt-1">
-                  This action will delete all entries in the categories table and update every resource to a "pending" status. 
+                  This action will delete all entries in the categories table and update every resource to a "needs_verification" status. 
                   This is typically used when preparing for a fresh data verification cycle or after a major schema change.
                 </p>
               </div>
@@ -258,7 +258,7 @@ function MaintenanceManager() {
                 className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                Clear Categories & Mark All Pending
+                Clear Categories & Mark All Needs Verification
               </button>
             </div>
           </div>
@@ -283,7 +283,7 @@ function MaintenanceManager() {
           </li>
           <li className="flex items-start gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 mt-1.5 shrink-0" />
-            Marking resources as pending will hide them from the public search if your frontend filters for "active" status.
+            Marking resources as needs_verification will flag them in the public search but they will still be visible for verification purposes.
           </li>
           <li className="flex items-start gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 mt-1.5 shrink-0" />

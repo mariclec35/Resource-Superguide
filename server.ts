@@ -284,10 +284,10 @@ app.post("/api/admin/maintenance/clear-and-pending", async (req, res) => {
     
     if (catError) throw catError;
 
-    // 2. Update all resources to pending
+    // 2. Update all resources to needs_verification
     const { error: resError } = await supabase
       .from("resources")
-      .update({ status: "pending" })
+      .update({ status: "needs_verification" })
       .neq("id", "00000000-0000-0000-0000-000000000000");
     
     if (resError) throw resError;
@@ -295,7 +295,7 @@ app.post("/api/admin/maintenance/clear-and-pending", async (req, res) => {
     console.log("Maintenance completed successfully");
     res.status(200).json({ 
       status: "ok", 
-      message: "Successfully removed all categories and marked all resources as pending." 
+      message: "Successfully removed all categories and marked all resources for verification." 
     });
   } catch (err: any) {
     console.error("Maintenance reset error:", err);
@@ -320,7 +320,7 @@ app.post("/api/search/analytics", async (req, res) => {
   try {
     const { error } = await supabase.from("search_analytics").insert({
       raw_prompt,
-      extracted_needs: extracted_needs_json,
+      extracted_needs_json,
       inferred_location,
       inferred_urgency,
       inferred_need_types,
@@ -334,7 +334,7 @@ app.post("/api/search/analytics", async (req, res) => {
     res.status(200).json({ status: "ok" });
   } catch (err: any) {
     console.error("Analytics logging error:", err);
-    res.status(500).json({ error: "Failed to log analytics", details: err });
+    res.status(500).json({ error: "Failed to log analytics" });
   }
 });
 
