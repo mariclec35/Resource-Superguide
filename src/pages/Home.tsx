@@ -137,20 +137,20 @@ Return a JSON object with:
         const reasons: string[] = [];
         
         const catMatch = extraction.need_types.some((nt: string) => 
-          r.category.toLowerCase().includes(nt.toLowerCase()) || 
-          r.subcategory?.toLowerCase().includes(nt.toLowerCase())
+          (r.category || '').toLowerCase().includes(nt.toLowerCase()) || 
+          (r.subcategory || '').toLowerCase().includes(nt.toLowerCase())
         );
         if (catMatch) {
           score += 10;
           reasons.push(`Matches your need for ${extraction.need_types.join(', ')}`);
         }
 
-        if (extraction.location && r.city?.toLowerCase().includes(extraction.location.toLowerCase())) {
+        if (extraction.location && (r.city || '').toLowerCase().includes(extraction.location.toLowerCase())) {
           score += 15;
           reasons.push(`Located in ${extraction.location}`);
         }
 
-        const searchFields = [r.name, r.provides, r.remarks, r.details].join(' ').toLowerCase();
+        const searchFields = [r.name || '', r.provides || '', r.remarks || '', r.details || ''].join(' ').toLowerCase();
         const matchedKeywords = extraction.keywords.filter((kw: string) => searchFields.includes(kw.toLowerCase()));
         if (matchedKeywords.length > 0) {
           score += matchedKeywords.length * 5;
@@ -203,21 +203,21 @@ Return a JSON object with:
       
       if (browseCategory) {
         matched = matched.filter(r => 
-          r.category.toLowerCase().includes(browseCategory.toLowerCase()) || 
-          r.subcategory?.toLowerCase().includes(browseCategory.toLowerCase())
+          (r.category || '').toLowerCase().includes(browseCategory.toLowerCase()) || 
+          (r.subcategory || '').toLowerCase().includes(browseCategory.toLowerCase())
         );
       }
       
       if (browseLocation) {
         matched = matched.filter(r => 
-          r.city?.toLowerCase().includes(browseLocation.toLowerCase()) ||
-          r.address?.toLowerCase().includes(browseLocation.toLowerCase())
+          (r.city || '').toLowerCase().includes(browseLocation.toLowerCase()) ||
+          (r.address || '').toLowerCase().includes(browseLocation.toLowerCase())
         );
       }
       
       if (browseFilters.length > 0) {
         matched = matched.filter(r => {
-          const searchFields = [r.name, r.provides, r.remarks, r.details].join(' ').toLowerCase();
+          const searchFields = [r.name || '', r.provides || '', r.remarks || '', r.details || ''].join(' ').toLowerCase();
           return browseFilters.every(f => {
             if (f === 'MAT friendly') return searchFields.includes('mat') || searchFields.includes('medication') || searchFields.includes('suboxone') || searchFields.includes('methadone');
             if (f === 'Immediate help') return searchFields.includes('emergency') || searchFields.includes('immediate') || searchFields.includes('urgent') || searchFields.includes('crisis');
@@ -267,8 +267,8 @@ Return a JSON object with:
   };
 
   const sortedResources = [...filteredResources].sort((a, b) => {
-    if (sortBy === 'name') return a.name.localeCompare(b.name);
-    if (sortBy === 'recent') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+    if (sortBy === 'recent') return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
     // Default to relevance (matchScore)
     return ((b as any).matchScore || 0) - ((a as any).matchScore || 0);
   });

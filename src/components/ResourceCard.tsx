@@ -20,7 +20,7 @@ export default function ResourceCard({ resource, inGuide, onToggleGuide }: Resou
   const matchReasons = (resource as any).matchReasons as string[] | undefined;
 
   // Infer tags based on text content
-  const searchFields = [resource.name, resource.provides, resource.remarks, resource.details].join(' ').toLowerCase();
+  const searchFields = [resource.name || '', resource.provides || '', resource.remarks || '', resource.details || ''].join(' ').toLowerCase();
   
   const tags: string[] = [];
   if (searchFields.includes('mat') || searchFields.includes('medication') || searchFields.includes('suboxone') || searchFields.includes('methadone')) tags.push('MAT Friendly');
@@ -40,7 +40,7 @@ export default function ResourceCard({ resource, inGuide, onToggleGuide }: Resou
             {resource.average_rating && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold">
                 <CheckCircle2 className="w-3 h-3" />
-                {resource.average_rating.toFixed(1)} ({resource.review_count || 0})
+                {Number(resource.average_rating).toFixed(1)} ({resource.review_count || 0})
               </div>
             )}
             {resource.status === 'needs_verification' && (
