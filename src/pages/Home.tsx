@@ -53,7 +53,7 @@ export default function Home() {
     setIsSearching(true);
     try {
       // 1. Extract intent using Gemini directly from frontend
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = import.meta.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error("Gemini API Key is missing");
 
       const ai = new GoogleGenAI({ apiKey });

@@ -154,11 +154,11 @@ export default function AdminAI() {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = import.meta.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
       setMessages(prev => [...prev, { 
         role: 'model', 
-        parts: [{ text: "⚠️ Gemini API Key is missing. Please add your API key to the platform's Secrets/Environment Variables as 'GEMINI_API_KEY' to enable the AI Assistant." }] 
+        parts: [{ text: "⚠️ Gemini API Key is missing. Please add your API key to the platform's Secrets/Environment Variables as 'VITE_CUSTOM_GEMINI_KEY' to enable the AI Assistant." }] 
       }]);
       return;
     }

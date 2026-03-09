@@ -21,7 +21,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const ai = new GoogleGenAI({ apiKey: process.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY || "" });
 
 // Seed requested admin user immediately
 (async () => {
