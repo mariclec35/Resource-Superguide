@@ -338,6 +338,80 @@ app.post("/api/search/analytics", async (req, res) => {
   }
 });
 
+// API: Get Homepage Settings
+app.get("/api/homepage-settings", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("resources")
+      .select("description")
+      .eq("name", "HOMEPAGE_SETTINGS")
+      .eq("category", "SYSTEM")
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      throw error;
+    }
+
+    if (!data) {
+      // Return default settings
+      return res.status(200).json({
+        primaryHeader: "Find the support you need.",
+        secondaryHeader: "Whether you know exactly what you're looking for or just need to describe your situation, we're here to help.",
+        quickActions: [
+          { name: "Shelter Tonight", prompt: "I need emergency shelter tonight.", icon: "Moon" },
+          { name: "Find a Meeting", prompt: "I want to find a recovery meeting near me.", icon: "Users" },
+          { name: "Food This Week", prompt: "I need help getting food this week.", icon: "Utensils" },
+          { name: "Job Help", prompt: "I am looking for employment assistance.", icon: "Briefcase" },
+          { name: "Transportation Help", prompt: "I need help with transportation or bus passes.", icon: "Car" },
+          { name: "Help for Families", prompt: "I need support services for my family and children.", icon: "Heart" }
+        ]
+      });
+    }
+
+    res.status(200).json(JSON.parse(data.description));
+  } catch (err: any) {
+    console.error("Failed to get homepage settings:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// API: Update Homepage Settings
+app.post("/api/homepage-settings", async (req, res) => {
+  const settings = req.body;
+  try {
+    // Check if it exists
+    const { data: existing } = await supabase
+      .from("resources")
+      .select("id")
+      .eq("name", "HOMEPAGE_SETTINGS")
+      .eq("category", "SYSTEM")
+      .single();
+
+    if (existing) {
+      const { error } = await supabase
+        .from("resources")
+        .update({ description: JSON.stringify(settings) })
+        .eq("id", existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("resources")
+        .insert({
+          name: "HOMEPAGE_SETTINGS",
+          category: "SYSTEM",
+          description: JSON.stringify(settings),
+          status: "active"
+        });
+      if (error) throw error;
+    }
+
+    res.status(200).json({ status: "ok" });
+  } catch (err: any) {
+    console.error("Failed to update homepage settings:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Middleware for automatic API error logging
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("API Error:", err);

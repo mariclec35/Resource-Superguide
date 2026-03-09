@@ -21,7 +21,7 @@ export default function Navbar() {
               <div className="bg-emerald-600 p-1.5 rounded-lg">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold tracking-tight text-zinc-900 hidden sm:block">
+              <span className="text-xl font-bold tracking-tight text-zinc-900">
                 SuperGuide
               </span>
             </Link>

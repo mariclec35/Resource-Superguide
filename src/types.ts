@@ -23,6 +23,16 @@ export interface Category {
   created_at: string;
 }
 
+export interface HomepageSettings {
+  primaryHeader: string;
+  secondaryHeader: string;
+  quickActions: {
+    name: string;
+    prompt: string;
+    icon: string;
+  }[];
+}
+
 export interface Resource {
   id: string;
   name: string;

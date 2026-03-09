@@ -74,6 +74,7 @@ export default function AdminDashboard() {
     { id: 'overview', label: 'Command Center', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'resources', label: 'Resources', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'categories', label: 'Categories', icon: <Layers className="w-4 h-4" /> },
+    { id: 'homepage', label: 'Homepage Settings', icon: <LayoutGrid className="w-4 h-4" /> },
     { id: 'feedback', label: 'Feedback Intelligence', icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'reports', label: 'Reports & Issues', icon: <ShieldAlert className="w-4 h-4" /> },
@@ -95,7 +96,9 @@ export default function AdminDashboard() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Operations Console</h1>
+                <h1 className="text-2xl font-black text-zinc-900 tracking-tight">SuperGuide</h1>
+                <div className="h-6 w-px bg-zinc-200" />
+                <span className="text-zinc-500 font-bold text-sm uppercase tracking-widest">Operations Console</span>
                 <span className="px-2 py-0.5 bg-zinc-100 text-zinc-400 text-[10px] font-bold rounded uppercase tracking-widest">v1.2</span>
               </div>
               <p className="text-sm text-zinc-500">System administration and resource management.</p>
@@ -186,6 +189,7 @@ export default function AdminDashboard() {
         {activeTab === 'import' && <DataImporter />}
         {activeTab === 'ai' && <AdminAI />}
         {activeTab === 'maintenance' && <MaintenanceManager />}
+        {activeTab === 'homepage' && <HomepageSettingsManager />}
       </div>
     </div>
   );
@@ -1031,7 +1035,9 @@ function ResourcesManager() {
                   <td className="px-6 py-4">
                     <p className="font-bold text-zinc-900">{resource.name}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{resource.category}</span>
+                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                        {resource.category || 'Category not assigned'}
+                      </span>
                       {resource.subcategory && (
                         <>
                           <span className="text-zinc-300">/</span>
@@ -2634,6 +2640,184 @@ function ErrorLogsManager() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function HomepageSettingsManager() {
+  const [settings, setSettings] = useState<any>({
+    primaryHeader: "Find the support you need.",
+    secondaryHeader: "Whether you know exactly what you're looking for or just need to describe your situation, we're here to help.",
+    quickActions: [
+      { name: "Shelter Tonight", prompt: "I need emergency shelter tonight.", icon: "Moon" },
+      { name: "Find a Meeting", prompt: "I want to find a recovery meeting near me.", icon: "Users" },
+      { name: "Food This Week", prompt: "I need help getting food this week.", icon: "Utensils" },
+      { name: "Job Help", prompt: "I am looking for employment assistance.", icon: "Briefcase" },
+      { name: "Transportation Help", prompt: "I need help with transportation or bus passes.", icon: "Car" },
+      { name: "Help for Families", prompt: "I need support services for my family and children.", icon: "Heart" }
+    ]
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/homepage-settings');
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/homepage-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+      if (!res.ok) throw new Error("Failed to save settings");
+      setMessage({ type: 'success', text: 'Homepage settings saved successfully.' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleActionChange = (index: number, field: string, value: string) => {
+    const newActions = [...settings.quickActions];
+    newActions[index] = { ...newActions[index], [field]: value };
+    setSettings({ ...settings, quickActions: newActions });
+  };
+
+  const addAction = () => {
+    setSettings({
+      ...settings,
+      quickActions: [...settings.quickActions, { name: "New Action", prompt: "", icon: "Search" }]
+    });
+  };
+
+  const removeAction = (index: number) => {
+    const newActions = settings.quickActions.filter((_: any, i: number) => i !== index);
+    setSettings({ ...settings, quickActions: newActions });
+  };
+
+  if (loading) return <div className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-zinc-400" /></div>;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Homepage Settings</h2>
+          <p className="text-zinc-500">Customize the text and quick actions on the main landing page.</p>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-6 py-2.5 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Settings className="w-4 h-4" />}
+          Save Changes
+        </button>
+      </div>
+
+      {message && (
+        <div className={`p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+          {message.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+          <p className="font-medium">{message.text}</p>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-6 space-y-6">
+        <h3 className="text-lg font-bold text-zinc-900 border-b border-zinc-100 pb-2">Headers</h3>
+        
+        <div>
+          <label className="block text-sm font-bold text-zinc-700 mb-1">Primary Header</label>
+          <input
+            type="text"
+            value={settings.primaryHeader}
+            onChange={(e) => setSettings({ ...settings, primaryHeader: e.target.value })}
+            className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-bold text-zinc-700 mb-1">Secondary Header</label>
+          <textarea
+            value={settings.secondaryHeader}
+            onChange={(e) => setSettings({ ...settings, secondaryHeader: e.target.value })}
+            className="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
+            rows={3}
+          />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-6 space-y-6">
+        <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+          <h3 className="text-lg font-bold text-zinc-900">Quick Actions</h3>
+          <button onClick={addAction} className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+            <Plus className="w-4 h-4" /> Add Action
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {settings.quickActions.map((action: any, index: number) => (
+            <div key={index} className="flex gap-4 items-start p-4 bg-zinc-50 rounded-xl border border-zinc-200">
+              <div className="flex-1 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Button Name</label>
+                    <input
+                      type="text"
+                      value={action.name}
+                      onChange={(e) => handleActionChange(index, 'name', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Icon Name (Lucide)</label>
+                    <input
+                      type="text"
+                      value={action.icon}
+                      onChange={(e) => handleActionChange(index, 'icon', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
+                      placeholder="e.g., Moon, Users, Utensils"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">AI Prompt</label>
+                  <input
+                    type="text"
+                    value={action.prompt}
+                    onChange={(e) => handleActionChange(index, 'prompt', e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+              <button 
+                onClick={() => removeAction(index)}
+                className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-6"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

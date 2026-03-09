@@ -19,22 +19,12 @@ interface ResourceCardProps {
 export default function ResourceCard({ resource, inGuide, onToggleGuide }: ResourceCardProps) {
   const matchReasons = (resource as any).matchReasons as string[] | undefined;
 
-  // Infer tags based on text content
-  const searchFields = [resource.name || '', resource.provides || '', resource.remarks || '', resource.details || ''].join(' ').toLowerCase();
-  
-  const tags: string[] = [];
-  if (searchFields.includes('mat') || searchFields.includes('medication') || searchFields.includes('suboxone') || searchFields.includes('methadone')) tags.push('MAT Friendly');
-  if (searchFields.includes('family') || searchFields.includes('children') || searchFields.includes('kids')) tags.push('Family Friendly');
-  if (searchFields.includes('felony') || searchFields.includes('reentry') || searchFields.includes('justice') || searchFields.includes('background')) tags.push('Reentry Friendly');
-  if (searchFields.includes('recovery') || searchFields.includes('sober') || searchFields.includes('aa') || searchFields.includes('na')) tags.push('Recovery Friendly');
-  if (searchFields.includes('emergency') || searchFields.includes('immediate') || searchFields.includes('urgent') || searchFields.includes('crisis')) tags.push('Immediate Help');
-
   return (
     <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col h-full group">
       <div className="p-5 flex-1">
         <div className="flex justify-between items-start gap-4 mb-3">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-zinc-100 text-zinc-600">
-            {resource.category}
+            {resource.category || 'Category not assigned'}
           </span>
           <div className="flex items-center gap-2">
             {resource.average_rating && (
@@ -70,21 +60,6 @@ export default function ResourceCard({ resource, inGuide, onToggleGuide }: Resou
             </div>
           )}
         </div>
-
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {tags.slice(0, 3).map(tag => (
-              <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-100 text-zinc-600">
-                {tag}
-              </span>
-            ))}
-            {tags.length > 3 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-50 text-zinc-400">
-                +{tags.length - 3}
-              </span>
-            )}
-          </div>
-        )}
 
         {matchReasons && matchReasons.length > 0 && (
           <div className="mb-4 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100/50">

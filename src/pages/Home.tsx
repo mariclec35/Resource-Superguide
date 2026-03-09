@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Resource } from '../types';
+import { Resource, Category, HomepageSettings } from '../types';
 import ResourceCard from '../components/ResourceCard';
-import { Search, Loader2, Sparkles, ArrowRight, Info, LayoutGrid, MapPin, ChevronDown, Moon, Users, Utensils, Briefcase, Car, Heart } from 'lucide-react';
+import { Search, Loader2, Sparkles, ArrowRight, Info, LayoutGrid, MapPin, Moon, Users, Utensils, Briefcase, Car, Heart, Shield, Home as HomeIcon, Phone, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { clsx, type ClassValue } from 'clsx';
@@ -12,35 +12,14 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const PRIMARY_CATEGORIES = [
-  "Housing",
-  "Sober Housing",
-  "Treatment Programs",
-  "Meetings & Recovery Support",
-  "Food Assistance",
-  "Employment",
-  "Transportation",
-  "Mental Health",
-  "Legal Help",
-  "Family & Children",
-  "Financial Assistance",
-  "Community Resources"
-];
-
-const SECONDARY_FILTERS = [
-  "Immediate help",
-  "Open now",
-  "Insurance accepted",
-  "MAT friendly",
-  "Gender-specific",
-  "Family-friendly",
-  "Reentry/felony-friendly",
-  "Youth services",
-  "Veteran services"
-];
+const iconMap: Record<string, React.ElementType> = {
+  Moon, Users, Utensils, Briefcase, Car, Heart, Shield, Home: HomeIcon, Phone, HelpCircle, Search
+};
 
 export default function Home() {
   const [resources, setResources] = useState<Resource[]>([]);
+  const [dbCategories, setDbCategories] = useState<Category[]>([]);
+  const [homepageSettings, setHomepageSettings] = useState<HomepageSettings | null>(null);
   const [loading, setLoading] = useState(true);
   
   // Search State
@@ -56,8 +35,6 @@ export default function Home() {
   // Browse State
   const [browseCategory, setBrowseCategory] = useState<string>('');
   const [browseLocation, setBrowseLocation] = useState<string>('');
-  const [browseFilters, setBrowseFilters] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
 
   const [myGuideIds, setMyGuideIds] = useState<string[]>([]);
@@ -76,14 +53,42 @@ export default function Home() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: resData, error: resError } = await supabase
-        .from('resources')
-        .select('*')
-        .neq('status', 'temporarily_closed')
-        .order('name');
+      const [resData, catData, settingsRes] = await Promise.all([
+        supabase
+          .from('resources')
+          .select('*')
+          .neq('status', 'temporarily_closed')
+          .order('name'),
+        supabase
+          .from('categories')
+          .select('*')
+          .eq('is_active', true)
+          .is('parent_id', null)
+          .order('display_order', { ascending: true })
+          .order('name'),
+        fetch('/api/homepage-settings').then(res => res.json()).catch(() => null)
+      ]);
 
-      if (resError) throw resError;
-      setResources(resData || []);
+      if (resData.error) throw resData.error;
+      setResources(resData.data || []);
+      
+      if (settingsRes) {
+        setHomepageSettings(settingsRes);
+      }
+      
+      // Fallback to sequence if display_order fails
+      if (catData.error) {
+        const fallbackCat = await supabase
+          .from('categories')
+          .select('*')
+          .eq('is_active', true)
+          .is('parent_id', null)
+          .order('sequence', { ascending: true })
+          .order('name');
+        setDbCategories(fallbackCat.data || []);
+      } else {
+        setDbCategories(catData.data || []);
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
@@ -304,10 +309,14 @@ Return a JSON object with:
       let matched = resources.map(r => ({ ...r, matchScore: 1, matchReasons: [] }));
       
       if (browseCategory) {
-        matched = matched.filter(r => 
-          (r.category || '').toLowerCase().includes(browseCategory.toLowerCase()) || 
-          (r.subcategory || '').toLowerCase().includes(browseCategory.toLowerCase())
-        );
+        if (browseCategory === 'Category not assigned') {
+          matched = matched.filter(r => !r.category);
+        } else {
+          matched = matched.filter(r => 
+            (r.category || '').toLowerCase().includes(browseCategory.toLowerCase()) || 
+            (r.subcategory || '').toLowerCase().includes(browseCategory.toLowerCase())
+          );
+        }
       }
       
       if (browseLocation) {
@@ -317,47 +326,15 @@ Return a JSON object with:
         );
       }
       
-      if (browseFilters.length > 0) {
-        matched = matched.filter(r => {
-          const searchFields = [r.name || '', r.provides || '', r.remarks || '', r.details || ''].join(' ').toLowerCase();
-          return browseFilters.every(f => {
-            if (f === 'MAT friendly') return searchFields.includes('mat') || searchFields.includes('medication') || searchFields.includes('suboxone') || searchFields.includes('methadone');
-            if (f === 'Immediate help') return searchFields.includes('emergency') || searchFields.includes('immediate') || searchFields.includes('urgent') || searchFields.includes('crisis');
-            if (f === 'Insurance accepted') return searchFields.includes('insurance') || searchFields.includes('medicaid') || searchFields.includes('medicare');
-            if (f === 'Gender-specific') return searchFields.includes('men') || searchFields.includes('women');
-            if (f === 'Family-friendly') return searchFields.includes('family') || searchFields.includes('children') || searchFields.includes('kids');
-            if (f === 'Reentry/felony-friendly') return searchFields.includes('felony') || searchFields.includes('reentry') || searchFields.includes('justice') || searchFields.includes('background');
-            if (f === 'Youth services') return searchFields.includes('youth') || searchFields.includes('teen') || searchFields.includes('adolescent');
-            if (f === 'Veteran services') return searchFields.includes('veteran') || searchFields.includes('va');
-            return true; // Fallback for 'Open now' or unknown filters
-          });
-        });
-      }
-      
       setFilteredResources(matched);
       setIsSearching(false);
     }, 400); // Simulate network delay for smooth UX
   };
 
-  const handleQuickAction = (action: string) => {
+  const handleQuickAction = (actionName: string, prompt: string) => {
     setSearchMode('ai');
-    let prompt = '';
-    switch (action) {
-      case 'Shelter Tonight': prompt = 'I need emergency shelter tonight.'; break;
-      case 'Find a Meeting': prompt = 'I want to find a recovery meeting near me.'; break;
-      case 'Food This Week': prompt = 'I need help getting food this week.'; break;
-      case 'Job Help': prompt = 'I am looking for employment assistance.'; break;
-      case 'Transportation Help': prompt = 'I need help with transportation or bus passes.'; break;
-      case 'Help for Families': prompt = 'I need support services for my family and children.'; break;
-    }
     setAiPrompt(prompt);
     // We don't auto-submit here to let them add location if they want, but we could.
-  };
-
-  const toggleFilter = (filter: string) => {
-    setBrowseFilters(prev => 
-      prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter]
-    );
   };
 
   const toggleGuide = (id: string) => {
@@ -394,10 +371,10 @@ Return a JSON object with:
           transition={{ duration: 0.5 }}
         >
           <h1 className="text-4xl md:text-5xl font-black text-zinc-900 mb-4 tracking-tight leading-tight">
-            Find the support you need.
+            {homepageSettings?.primaryHeader || "Find the support you need."}
           </h1>
           <p className="text-lg md:text-xl text-zinc-600 mb-8">
-            Whether you know exactly what you're looking for or just need to describe your situation, we're here to help.
+            {homepageSettings?.secondaryHeader || "Whether you know exactly what you're looking for or just need to describe your situation, we're here to help."}
           </p>
         </motion.div>
 
@@ -408,24 +385,27 @@ Return a JSON object with:
           transition={{ delay: 0.2 }}
           className="flex flex-wrap justify-center gap-3 mb-10"
         >
-          <button onClick={() => handleQuickAction('Shelter Tonight')} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-full text-sm font-bold transition-colors">
-            <Moon className="w-4 h-4" /> Shelter Tonight
-          </button>
-          <button onClick={() => handleQuickAction('Find a Meeting')} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-full text-sm font-bold transition-colors">
-            <Users className="w-4 h-4" /> Find a Meeting
-          </button>
-          <button onClick={() => handleQuickAction('Food This Week')} className="flex items-center gap-2 px-4 py-2.5 bg-orange-50 text-orange-700 hover:bg-orange-100 rounded-full text-sm font-bold transition-colors">
-            <Utensils className="w-4 h-4" /> Food This Week
-          </button>
-          <button onClick={() => handleQuickAction('Job Help')} className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-full text-sm font-bold transition-colors">
-            <Briefcase className="w-4 h-4" /> Job Help
-          </button>
-          <button onClick={() => handleQuickAction('Transportation Help')} className="flex items-center gap-2 px-4 py-2.5 bg-zinc-100 text-zinc-700 hover:bg-zinc-200 rounded-full text-sm font-bold transition-colors">
-            <Car className="w-4 h-4" /> Transportation
-          </button>
-          <button onClick={() => handleQuickAction('Help for Families')} className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-full text-sm font-bold transition-colors">
-            <Heart className="w-4 h-4" /> Help for Families
-          </button>
+          {homepageSettings?.quickActions?.map((action, index) => {
+            const colors = [
+              'bg-indigo-50 text-indigo-700 hover:bg-indigo-100',
+              'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+              'bg-orange-50 text-orange-700 hover:bg-orange-100',
+              'bg-blue-50 text-blue-700 hover:bg-blue-100',
+              'bg-rose-50 text-rose-700 hover:bg-rose-100',
+              'bg-purple-50 text-purple-700 hover:bg-purple-100',
+            ];
+            const colorClass = colors[index % colors.length];
+            const IconComponent = iconMap[action.icon] || Search;
+            return (
+              <button 
+                key={index} 
+                onClick={() => handleQuickAction(action.name, action.prompt)} 
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-colors ${colorClass}`}
+              >
+                <IconComponent className="w-4 h-4" /> {action.name}
+              </button>
+            );
+          })}
         </motion.div>
 
         {/* Search Module */}
@@ -467,11 +447,7 @@ Return a JSON object with:
                     }
                   }}
                 />
-                <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
-                  <div className="text-xs text-zinc-500 font-medium flex items-center gap-1.5">
-                    <Info className="w-4 h-4 text-zinc-400" /> 
-                    AI helps match your natural language to resources.
-                  </div>
+                <div className="flex flex-col sm:flex-row justify-end items-center mt-6 gap-4">
                   <button
                     type="submit"
                     disabled={isSearching || !aiPrompt.trim()}
@@ -494,18 +470,24 @@ Return a JSON object with:
             ) : (
               <form onSubmit={handleBrowseSearch}>
                 <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">Primary Category</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-6">
-                  {PRIMARY_CATEGORIES.map(c => (
-                    <button 
-                      key={c}
-                      type="button" 
-                      onClick={() => setBrowseCategory(browseCategory === c ? '' : c)} 
-                      className={`p-3 rounded-xl border text-sm font-bold text-left transition-all ${browseCategory === c ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'}`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
+                {dbCategories.length === 0 ? (
+                  <div className="p-6 bg-zinc-50 border border-zinc-200 rounded-2xl text-center mb-6">
+                    <p className="text-zinc-500 font-medium">Categories coming soon</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-6">
+                    {dbCategories.map(c => (
+                      <button 
+                        key={c.id}
+                        type="button" 
+                        onClick={() => setBrowseCategory(browseCategory === c.name ? '' : c.name)} 
+                        className={`p-3 rounded-xl border text-sm font-bold text-left transition-all ${browseCategory === c.name ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'}`}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                   <div className="flex-1">
@@ -521,40 +503,7 @@ Return a JSON object with:
                       />
                     </div>
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">Filters (Optional)</label>
-                    <button 
-                      type="button" 
-                      onClick={() => setShowFilters(!showFilters)} 
-                      className="w-full px-4 py-3.5 bg-zinc-50 border border-zinc-200 rounded-xl flex items-center justify-between text-zinc-700 font-medium hover:bg-zinc-100 transition-colors"
-                    >
-                      <span>{browseFilters.length > 0 ? `${browseFilters.length} filter${browseFilters.length > 1 ? 's' : ''} selected` : 'Select filters...'}</span>
-                      <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-                    </button>
-                  </div>
                 </div>
-                
-                <AnimatePresence>
-                  {showFilters && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden mb-6"
-                    >
-                      <div className="p-5 bg-zinc-50 rounded-xl border border-zinc-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        {SECONDARY_FILTERS.map(f => (
-                          <label key={f} className="flex items-center gap-3 cursor-pointer group">
-                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${browseFilters.includes(f) ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-zinc-300 group-hover:border-emerald-500'}`}>
-                              {browseFilters.includes(f) && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                            </div>
-                            <span className="text-sm text-zinc-700 font-medium select-none">{f}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
                 
                 <div className="flex justify-end pt-2 border-t border-zinc-100">
                   <button
@@ -605,39 +554,6 @@ Return a JSON object with:
             animate={{ opacity: 1, y: 0 }}
             className="space-y-8"
           >
-            {aiExtraction && (
-              <div className={cn(
-                "rounded-3xl p-6 md:p-8 shadow-sm border",
-                aiExtraction.is_error ? "bg-amber-50 border-amber-100" : "bg-emerald-50 border-emerald-100"
-              )}>
-                <div className="flex items-start gap-4">
-                  <div className={cn(
-                    "p-3 rounded-2xl shadow-lg shrink-0",
-                    aiExtraction.is_error ? "bg-amber-600 shadow-amber-200" : "bg-emerald-600 shadow-emerald-200"
-                  )}>
-                    {aiExtraction.is_error ? <Info className="w-6 h-6 text-white" /> : <Sparkles className="w-6 h-6 text-white" />}
-                  </div>
-                  <div>
-                    <h2 className="text-xl md:text-2xl font-black text-zinc-900 mb-2 tracking-tight">
-                      {aiExtraction.is_error ? "Search Notice" : "AI Interpretation"}
-                    </h2>
-                    <p className={cn(
-                      "text-base md:text-lg leading-relaxed font-medium",
-                      aiExtraction.is_error ? "text-amber-900" : "text-emerald-900"
-                    )}>
-                      {aiExtraction.ai_summary}
-                    </p>
-                    {aiExtraction.error_type === 'key_missing' && (
-                      <div className="mt-4 p-4 bg-white/50 rounded-xl border border-amber-200 text-sm text-amber-800">
-                        <p className="font-bold mb-1">Administrator Note:</p>
-                        <p>To enable AI-powered search in the live environment, please add the <code className="bg-amber-100 px-1 rounded">GEMINI_API_KEY</code> to your environment variables in your deployment dashboard (e.g., Vercel, Cloud Run, or Supabase Edge Functions).</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
               <h2 className="text-2xl font-black text-zinc-900 tracking-tight">
                 {filteredResources.length} {filteredResources.length === 1 ? 'Resource' : 'Resources'} Found
@@ -678,7 +594,6 @@ Return a JSON object with:
                   onClick={() => {
                     setBrowseCategory('');
                     setBrowseLocation('');
-                    setBrowseFilters([]);
                     setSearchMode('browse');
                     setFilteredResources(resources);
                   }}
