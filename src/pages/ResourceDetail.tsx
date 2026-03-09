@@ -276,17 +276,37 @@ export default function ResourceDetail() {
                 {feedbacks.length >= 3 ? (
                   <div className="space-y-4">
                     <p className="text-sm text-zinc-100 leading-relaxed">
-                      Based on community feedback, visitors commonly mention {resource.name} as being particularly helpful for {resource.category.toLowerCase()} needs. 
-                      The staff is frequently noted for their professional approach.
+                      Based on {feedbacks.length} community {feedbacks.length === 1 ? 'review' : 'reviews'}, visitors rate {resource.name} an average of{' '}
+                      {(feedbacks.reduce((s, f) => s + f.rating_overall, 0) / feedbacks.length).toFixed(1)} out of 5.
                     </p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                         <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">Common Strengths</p>
-                        <p className="text-xs font-bold text-emerald-400">Helpful Staff, Quick Response</p>
+                        <p className="text-xs font-bold text-emerald-400">
+                          {(() => {
+                            const strengths: string[] = [];
+                            const avgStaff = feedbacks.filter(f => f.rating_staff).reduce((s, f) => s + (f.rating_staff || 0), 0) / (feedbacks.filter(f => f.rating_staff).length || 1);
+                            const avgAccess = feedbacks.filter(f => f.rating_accessibility).reduce((s, f) => s + (f.rating_accessibility || 0), 0) / (feedbacks.filter(f => f.rating_accessibility).length || 1);
+                            const avgUse = feedbacks.filter(f => f.rating_usefulness).reduce((s, f) => s + (f.rating_usefulness || 0), 0) / (feedbacks.filter(f => f.rating_usefulness).length || 1);
+                            if (avgStaff >= 4) strengths.push('Helpful Staff');
+                            if (avgAccess >= 4) strengths.push('Accessible');
+                            if (avgUse >= 4) strengths.push('Very Useful');
+                            return strengths.length > 0 ? strengths.join(', ') : 'Generally positive feedback';
+                          })()}
+                        </p>
                       </div>
                       <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                         <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">Keep in Mind</p>
-                        <p className="text-xs font-bold text-amber-400">Limited Parking, Busy Mornings</p>
+                        <p className="text-xs font-bold text-amber-400">
+                          {(() => {
+                            const notes: string[] = [];
+                            const waitNotes = feedbacks.filter(f => f.wait_time_notes?.trim()).map(f => f.wait_time_notes!.trim());
+                            const hoursNotes = feedbacks.filter(f => f.hours_accuracy_notes?.trim()).map(f => f.hours_accuracy_notes!.trim());
+                            if (waitNotes.length > 0) notes.push('Wait times vary');
+                            if (hoursNotes.length > 0) notes.push('Confirm hours before visiting');
+                            return notes.length > 0 ? notes.join(', ') : 'No common concerns reported';
+                          })()}
+                        </p>
                       </div>
                     </div>
                   </div>

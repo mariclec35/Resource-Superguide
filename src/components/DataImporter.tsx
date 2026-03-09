@@ -125,10 +125,16 @@ export default function DataImporter() {
         const batch = rows.slice(i, i + batchSize).map(row => ({
           name: row.name || 'Unnamed Resource',
           category: row.subsection || row.section || 'Other',
+          subcategory: row.subcategory || null,
           address: row.address || '',
+          city: row.city || null,
           phone: row.phone || null,
+          email: row.email || null,
           website: row.website || null,
-          description: [row.provides, row.remarks, row.details].filter(Boolean).join('\n\n') || null,
+          hours: row.hours || null,
+          provides: row.provides || null,
+          remarks: row.remarks || null,
+          details: row.details || null,
           status: 'active'
         }));
 

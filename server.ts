@@ -3,11 +3,10 @@ import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-import fs from "fs";
-
-fs.writeFileSync("server_start.log", `${new Date().toISOString()} - Server process started\n`);
 
 dotenv.config();
+
+console.log(`${new Date().toISOString()} - Server process started`);
 
 const app = express();
 const PORT = 3000;
@@ -17,11 +16,10 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL ||
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  fs.appendFileSync("server_start.log", `${new Date().toISOString()} - Missing Supabase configuration\n`);
+  console.warn(`${new Date().toISOString()} - Missing Supabase configuration`);
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const ai = new GoogleGenAI({ apiKey: process.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY || "" });
 
 // Seed requested admin user immediately
 (async () => {
@@ -91,82 +89,73 @@ const ai = new GoogleGenAI({ apiKey: process.env.VITE_CUSTOM_GEMINI_KEY || proce
       // We will just assume the table exists or will be created by the user.
     }
 
+    const adminEmail1 = process.env.ADMIN_EMAIL_1 || "";
+    const adminPassword1 = process.env.ADMIN_PASSWORD_1 || "";
+    const adminEmail2 = process.env.ADMIN_EMAIL_2 || "";
+    const adminPassword2 = process.env.ADMIN_PASSWORD_2 || "";
+
     const adminAccounts = [
-      { email: "rosesroses1212@gmail.com", password: "Lovechris*1212" },
-      { email: "mariclec35@gmail.com", password: "Lovechris*1212" }
+      ...(adminEmail1 && adminPassword1 ? [{ email: adminEmail1, password: adminPassword1 }] : []),
+      ...(adminEmail2 && adminPassword2 ? [{ email: adminEmail2, password: adminPassword2 }] : []),
     ];
-    const logFile = "seed_results.log";
-    
-    fs.appendFileSync(logFile, `${new Date().toISOString()} - Seeding check started\n`);
-    
-    const { data, error: listError } = await supabase.auth.admin.listUsers();
-    
-    if (listError) {
-      const msg = `Failed to list users during seeding: ${listError.message}`;
-      console.error(msg);
-      fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+
+    if (adminAccounts.length === 0) {
+      console.log("No admin accounts configured via environment variables (ADMIN_EMAIL_1, ADMIN_PASSWORD_1, etc.). Skipping seed.");
     } else {
-      const users = data.users;
-      const existingEmails = users.map(u => u.email?.toLowerCase().trim());
-      fs.appendFileSync(logFile, `${new Date().toISOString()} - Found ${users.length} existing users: ${existingEmails.join(', ')}\n`);
-      
-      for (const account of adminAccounts) {
-        const targetEmail = account.email.toLowerCase().trim();
-        const existingUser = users.find(u => u.email?.toLowerCase().trim() === targetEmail);
-        
-        if (!existingUser) {
-          console.log(`Creating admin user: ${targetEmail}`);
-          fs.appendFileSync(logFile, `${new Date().toISOString()} - Attempting to create user ${targetEmail}\n`);
-          
-          const { data: createData, error: createError } = await supabase.auth.admin.createUser({
-            email: targetEmail,
-            password: account.password,
-            email_confirm: true
-          });
-          
-          if (createError) {
-            // If it fails with 500, it might be a Supabase internal state issue.
-            // We'll log it more cleanly.
-            const msg = `Failed to create admin user ${targetEmail}: ${createError.message} (${createError.status})`;
-            console.error(msg);
-            fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
-            
-            // If it failed but maybe the user actually exists (Supabase glitch), 
-            // we'll try to find it again in the next run or just skip for now.
+      console.log(`${new Date().toISOString()} - Seeding check started`);
+
+      const { data, error: listError } = await supabase.auth.admin.listUsers();
+
+      if (listError) {
+        console.error(`Failed to list users during seeding: ${listError.message}`);
+      } else {
+        const users = data.users;
+        console.log(`${new Date().toISOString()} - Found ${users.length} existing users`);
+
+        for (const account of adminAccounts) {
+          const targetEmail = account.email.toLowerCase().trim();
+          const existingUser = users.find(u => u.email?.toLowerCase().trim() === targetEmail);
+
+          if (!existingUser) {
+            console.log(`Creating admin user: ${targetEmail}`);
+            const { error: createError } = await supabase.auth.admin.createUser({
+              email: targetEmail,
+              password: account.password,
+              email_confirm: true
+            });
+            if (createError) {
+              console.error(`Failed to create admin user ${targetEmail}: ${createError.message} (${createError.status})`);
+            } else {
+              console.log(`Successfully created admin user: ${targetEmail}`);
+            }
           } else {
-            const msg = `Successfully created admin user: ${targetEmail}`;
-            console.log(msg);
-            fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
-          }
-        } else {
-          // If user exists, ensure password is set to the expected one for recovery
-          console.log(`Updating admin user ${account.email} password...`);
-          fs.appendFileSync(logFile, `${new Date().toISOString()} - Updating user ${account.email}\n`);
-          const { error: updateError } = await supabase.auth.admin.updateUserById(existingUser.id, {
-            password: account.password,
-            email_confirm: true
-          });
-          
-          if (updateError) {
-            const msg = `Failed to update admin user ${account.email}: ${JSON.stringify(updateError)}`;
-            console.error(msg);
-            fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
-          } else {
-            const msg = `Successfully updated admin user ${account.email}`;
-            console.log(msg);
-            fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`);
+            console.log(`Admin user ${targetEmail} already exists, skipping.`);
           }
         }
       }
     }
   } catch (err: any) {
-    const msg = `Unexpected error during seeding: ${err.message}`;
-    console.error(msg);
-    fs.appendFileSync("seed_results.log", `${new Date().toISOString()} - ${msg}\n`);
+    console.error(`Unexpected error during seeding: ${err.message}`);
   }
 })();
 
 app.use(express.json());
+
+// Auth middleware for admin routes
+async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const token = authHeader.slice(7);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
+app.use('/api/admin', requireAuth);
 
 // API: Log Error
 app.post("/api/log-error", async (req, res) => {
@@ -205,6 +194,77 @@ app.post("/api/log-error", async (req, res) => {
   } catch (err: any) {
     console.error("Failed to log error to Supabase:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// API: Server-side AI Search (keeps Gemini API key off the client)
+app.post("/api/ai-search", async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ error: "prompt is required" });
+  }
+
+  const apiKey = process.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY || "";
+  if (!apiKey) {
+    return res.status(503).json({ error: "AI search is not configured on this server." });
+  }
+
+  try {
+    const aiClient = new GoogleGenAI({ apiKey });
+    const response = await aiClient.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        systemInstruction: `Extract structured needs from the user's community resource request.
+Return a JSON object with:
+- need_types: string[] (housing, shelter, food, treatment, recovery support, employment, transportation, legal, healthcare, mental health, youth services, family services, domestic violence support, financial assistance)
+- urgency: string (immediate, this_week, ongoing)
+- location: string
+- preferences: string[]
+- barriers: string[]
+- eligibility_clues: string[]
+- keywords: string[]
+- ai_summary: string (A short interpretation of the user's needs)`,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            need_types: { type: Type.ARRAY, items: { type: Type.STRING } },
+            urgency: { type: Type.STRING },
+            location: { type: Type.STRING },
+            preferences: { type: Type.ARRAY, items: { type: Type.STRING } },
+            barriers: { type: Type.ARRAY, items: { type: Type.STRING } },
+            eligibility_clues: { type: Type.ARRAY, items: { type: Type.STRING } },
+            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+            ai_summary: { type: Type.STRING }
+          },
+          required: ["need_types", "urgency", "preferences", "barriers", "eligibility_clues", "keywords", "ai_summary"]
+        }
+      }
+    });
+
+    let extraction: any = {};
+    try {
+      let text = response.text || "{}";
+      text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      extraction = JSON.parse(text);
+    } catch {
+      extraction = {
+        need_types: [],
+        urgency: 'ongoing',
+        location: '',
+        preferences: [],
+        barriers: [],
+        eligibility_clues: [],
+        keywords: prompt.toLowerCase().split(' ').filter((w: string) => w.length > 3),
+        ai_summary: "We searched using your keywords."
+      };
+    }
+
+    res.status(200).json(extraction);
+  } catch (err: any) {
+    console.error("AI search error:", err);
+    res.status(500).json({ error: "AI search failed", message: err.message });
   }
 });
 
@@ -665,8 +725,7 @@ async function startServer() {
       try {
         const envScript = `<script>window.ENV = ${JSON.stringify({
           VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "",
-          VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
-          GEMINI_API_KEY: process.env.GEMINI_API_KEY || process.env.VITE_CUSTOM_GEMINI_KEY || ""
+          VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ""
         })};</script>`;
         const html = htmlTemplate.replace("</head>", `${envScript}</head>`);
         res.send(html);

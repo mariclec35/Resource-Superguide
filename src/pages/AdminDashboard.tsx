@@ -534,7 +534,7 @@ function SearchAnalyticsDashboard() {
           // Extract top terms
           const terms: Record<string, number> = {};
           data.forEach(l => {
-            l.extracted_needs?.need_types?.forEach((n: string) => {
+            l.extracted_needs_json?.need_types?.forEach((n: string) => {
               terms[n] = (terms[n] || 0) + 1;
             });
           });
@@ -662,7 +662,7 @@ function SearchAnalyticsDashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
-                            {log.extracted_needs?.need_types?.map((n: string, i: number) => (
+                            {log.extracted_needs_json?.need_types?.map((n: string, i: number) => (
                               <span key={i} className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 text-[10px] font-bold uppercase tracking-wider">
                                 {n}
                               </span>
@@ -754,7 +754,7 @@ function SearchAnalyticsDashboard() {
                     <div>
                       <p className="text-sm font-bold text-zinc-900">"{log.raw_prompt}"</p>
                       <div className="flex gap-1 mt-1">
-                        {log.extracted_needs?.need_types?.map((n: string, j: number) => (
+                        {log.extracted_needs_json?.need_types?.map((n: string, j: number) => (
                           <span key={j} className="text-[10px] font-black text-red-500 uppercase tracking-widest">
                             {n}
                           </span>
@@ -1746,6 +1746,8 @@ function SortableCategoryItem({
     .filter((c: any) => c.parent_id === category.id)
     .sort((a: any, b: any) => a.display_order - b.display_order);
 
+  const subSensors = useSensors(useSensor(PointerSensor));
+
   return (
     <div ref={setNodeRef} style={style} className="space-y-2">
       <div className={`
@@ -1832,7 +1834,7 @@ function SortableCategoryItem({
       {/* Subcategories */}
       <div className="ml-12 space-y-2">
         <DndContext 
-          sensors={useSensors(useSensor(PointerSensor))}
+          sensors={subSensors}
           collisionDetection={closestCenter}
           onDragEnd={onDragEnd}
         >
