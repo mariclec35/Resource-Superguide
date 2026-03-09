@@ -154,7 +154,8 @@ export default function AdminAI() {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
-    const apiKey = import.meta.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY;
+    const env = typeof window !== 'undefined' ? (window as any).ENV || {} : {};
+    const apiKey = env.GEMINI_API_KEY || import.meta.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
       setMessages(prev => [...prev, { 
         role: 'model', 

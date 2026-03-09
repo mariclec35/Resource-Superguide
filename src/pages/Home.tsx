@@ -93,7 +93,8 @@ export default function Home() {
     setIsSearching(true);
     setHasSearched(true);
     try {
-      const apiKey = import.meta.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY;
+      const env = typeof window !== 'undefined' ? (window as any).ENV || {} : {};
+      const apiKey = env.GEMINI_API_KEY || import.meta.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error("Gemini API Key is missing");
 
       const ai = new GoogleGenAI({ apiKey });

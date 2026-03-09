@@ -370,9 +370,26 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static("dist"));
+    app.use(express.static("dist", { index: false }));
+    let htmlTemplate = "";
+    try {
+      htmlTemplate = fs.readFileSync("dist/index.html", "utf-8");
+    } catch (e) {
+      console.error("Could not read dist/index.html", e);
+    }
     app.get("*", (req, res) => {
-      res.sendFile("dist/index.html", { root: "." });
+      try {
+        const envScript = `<script>window.ENV = ${JSON.stringify({
+          VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "",
+          VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "",
+          GEMINI_API_KEY: process.env.GEMINI_API_KEY || process.env.VITE_CUSTOM_GEMINI_KEY || ""
+        })};</script>`;
+        const html = htmlTemplate.replace("</head>", `${envScript}</head>`);
+        res.send(html);
+      } catch (err) {
+        console.error("Error serving index.html:", err);
+        res.status(500).send("Internal Server Error");
+      }
     });
   }
 
