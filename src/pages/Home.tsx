@@ -95,7 +95,7 @@ export default function Home() {
     try {
       const env = typeof window !== 'undefined' ? (window as any).ENV || {} : {};
       const apiKey = env.GEMINI_API_KEY || import.meta.env.VITE_CUSTOM_GEMINI_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("Gemini API Key is missing");
+      if (!apiKey || apiKey === 'undefined') throw new Error("Gemini API Key is missing");
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
@@ -106,7 +106,7 @@ export default function Home() {
 Return a JSON object with:
 - need_types: string[] (housing, shelter, food, treatment, recovery support, employment, transportation, legal, healthcare, mental health, youth services, family services, domestic violence support, financial assistance)
 - urgency: string (immediate, this_week, ongoing)
-- location: string | null
+- location: string
 - preferences: string[]
 - barriers: string[]
 - eligibility_clues: string[]
@@ -118,7 +118,7 @@ Return a JSON object with:
             properties: {
               need_types: { type: Type.ARRAY, items: { type: Type.STRING } },
               urgency: { type: Type.STRING },
-              location: { type: Type.STRING, nullable: true },
+              location: { type: Type.STRING },
               preferences: { type: Type.ARRAY, items: { type: Type.STRING } },
               barriers: { type: Type.ARRAY, items: { type: Type.STRING } },
               eligibility_clues: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -130,20 +130,39 @@ Return a JSON object with:
         }
       });
 
-      const extraction = JSON.parse(response.text || "{}");
+      let extraction: any = {};
+      try {
+        let text = response.text || "{}";
+        text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        extraction = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse AI response:", response.text);
+        extraction = {
+          need_types: [],
+          urgency: 'ongoing',
+          location: '',
+          preferences: [],
+          barriers: [],
+          eligibility_clues: [],
+          keywords: aiPrompt.toLowerCase().split(' ').filter(w => w.length > 3),
+          ai_summary: "We searched using your keywords."
+        };
+      }
+
       setAiExtraction(extraction);
 
       const matched = resources.map(r => {
         let score = 0;
         const reasons: string[] = [];
         
-        const catMatch = extraction.need_types.some((nt: string) => 
+        const needTypes = Array.isArray(extraction.need_types) ? extraction.need_types : [];
+        const catMatch = needTypes.some((nt: string) => 
           (r.category || '').toLowerCase().includes(nt.toLowerCase()) || 
           (r.subcategory || '').toLowerCase().includes(nt.toLowerCase())
         );
         if (catMatch) {
           score += 10;
-          reasons.push(`Matches your need for ${extraction.need_types.join(', ')}`);
+          reasons.push(`Matches your need for ${needTypes.join(', ')}`);
         }
 
         if (extraction.location && (r.city || '').toLowerCase().includes(extraction.location.toLowerCase())) {
@@ -152,7 +171,8 @@ Return a JSON object with:
         }
 
         const searchFields = [r.name || '', r.provides || '', r.remarks || '', r.details || ''].join(' ').toLowerCase();
-        const matchedKeywords = extraction.keywords.filter((kw: string) => searchFields.includes(kw.toLowerCase()));
+        const keywords = Array.isArray(extraction.keywords) ? extraction.keywords : [];
+        const matchedKeywords = keywords.filter((kw: string) => searchFields.includes(kw.toLowerCase()));
         if (matchedKeywords.length > 0) {
           score += matchedKeywords.length * 5;
           reasons.push(`Matches keywords: ${matchedKeywords.join(', ')}`);
@@ -170,24 +190,42 @@ Return a JSON object with:
 
       setFilteredResources(matched);
 
-      await fetch('/api/search/analytics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          raw_prompt: aiPrompt,
-          extracted_needs_json: extraction,
-          inferred_location: extraction.location,
-          inferred_urgency: extraction.urgency,
-          inferred_need_types: extraction.need_types,
-          results_count: matched.length,
-          matched_resource_ids: matched.map(m => m.id),
-          search_success: matched.length > 0,
-          session_id: localStorage.getItem('session_id') || 'anon'
-        })
-      });
+      try {
+        await fetch('/api/search/analytics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            raw_prompt: aiPrompt,
+            extracted_needs_json: extraction,
+            inferred_location: extraction.location,
+            inferred_urgency: extraction.urgency,
+            inferred_need_types: extraction.need_types,
+            results_count: matched.length,
+            matched_resource_ids: matched.map(m => m.id),
+            search_success: matched.length > 0,
+            session_id: localStorage.getItem('session_id') || 'anon'
+          })
+        });
+      } catch (analyticsErr) {
+        console.error('Analytics error:', analyticsErr);
+      }
 
     } catch (err) {
       console.error('AI Search error:', err);
+      // Fallback to basic keyword search if AI fails completely
+      const keywords = aiPrompt.toLowerCase().split(' ').filter(w => w.length > 3);
+      const matched = resources.map(r => {
+        const searchFields = [r.name || '', r.category || '', r.subcategory || '', r.provides || '', r.remarks || '', r.details || ''].join(' ').toLowerCase();
+        const matchedKeywords = keywords.filter(kw => searchFields.includes(kw));
+        return { ...r, matchScore: matchedKeywords.length, matchReasons: matchedKeywords.length > 0 ? ['Matches your search keywords'] : [] };
+      }).filter(r => r.matchScore > 0).sort((a, b) => b.matchScore - a.matchScore);
+      
+      setFilteredResources(matched);
+      setAiExtraction({
+        ai_summary: "We experienced an issue with our AI service, but we searched using your keywords instead.",
+        need_types: [],
+        keywords: keywords
+      });
     } finally {
       setIsSearching(false);
     }

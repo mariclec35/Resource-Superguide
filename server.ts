@@ -320,7 +320,7 @@ app.post("/api/search/analytics", async (req, res) => {
   try {
     const { error } = await supabase.from("search_analytics").insert({
       raw_prompt,
-      extracted_needs_json,
+      extracted_needs: extracted_needs_json,
       inferred_location,
       inferred_urgency,
       inferred_need_types,
@@ -334,7 +334,7 @@ app.post("/api/search/analytics", async (req, res) => {
     res.status(200).json({ status: "ok" });
   } catch (err: any) {
     console.error("Analytics logging error:", err);
-    res.status(500).json({ error: "Failed to log analytics" });
+    res.status(500).json({ error: "Failed to log analytics", details: err });
   }
 });
 
