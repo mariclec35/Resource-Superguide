@@ -364,7 +364,7 @@ export default function AdminAI() {
       ];
 
       const chat = ai.chats.create({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         config: {
           systemInstruction: "You are a highly capable Admin AI Assistant for the SuperGuide platform. Your goal is to help administrators manage the system efficiently. You can perform CRUD operations on resources, categories, and users. You can also review and update community reports and error logs. Always be professional, concise, and confirm actions before performing them if they are destructive (like deleting). If you need more information to perform a task, ask the user. You have access to the database through tool calls.",
           tools: tools
@@ -416,7 +416,7 @@ export default function AdminAI() {
             <h2 className="text-lg font-black text-zinc-900 tracking-tight">Intelligence</h2>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Powered by Gemini 3.1 Pro</span>
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Powered by Gemini 3 Flash</span>
             </div>
           </div>
         </div>

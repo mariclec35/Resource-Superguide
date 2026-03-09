@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Globe, Phone, Info, CheckCircle2, AlertTriangle, ExternalLink, Sparkles } from 'lucide-react';
+import { MapPin, Globe, Phone, Info, CheckCircle2, AlertTriangle, ExternalLink, Sparkles, Clock, Navigation } from 'lucide-react';
 import { Resource } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -18,6 +18,16 @@ interface ResourceCardProps {
 
 export default function ResourceCard({ resource, inGuide, onToggleGuide }: ResourceCardProps) {
   const matchReasons = (resource as any).matchReasons as string[] | undefined;
+
+  // Infer tags based on text content
+  const searchFields = [resource.name, resource.provides, resource.remarks, resource.details].join(' ').toLowerCase();
+  
+  const tags: string[] = [];
+  if (searchFields.includes('mat') || searchFields.includes('medication') || searchFields.includes('suboxone') || searchFields.includes('methadone')) tags.push('MAT Friendly');
+  if (searchFields.includes('family') || searchFields.includes('children') || searchFields.includes('kids')) tags.push('Family Friendly');
+  if (searchFields.includes('felony') || searchFields.includes('reentry') || searchFields.includes('justice') || searchFields.includes('background')) tags.push('Reentry Friendly');
+  if (searchFields.includes('recovery') || searchFields.includes('sober') || searchFields.includes('aa') || searchFields.includes('na')) tags.push('Recovery Friendly');
+  if (searchFields.includes('emergency') || searchFields.includes('immediate') || searchFields.includes('urgent') || searchFields.includes('crisis')) tags.push('Immediate Help');
 
   return (
     <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col h-full group">
@@ -53,7 +63,28 @@ export default function ResourceCard({ resource, inGuide, onToggleGuide }: Resou
             <MapPin className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
             <span className="truncate">{resource.city ? `${resource.city}, ` : ''}{resource.address || 'No address listed'}</span>
           </div>
+          {resource.hours && (
+            <div className="flex items-start gap-2 text-sm text-zinc-600">
+              <Clock className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
+              <span className="line-clamp-1">{resource.hours}</span>
+            </div>
+          )}
         </div>
+
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {tags.slice(0, 3).map(tag => (
+              <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-100 text-zinc-600">
+                {tag}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-50 text-zinc-400">
+                +{tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
 
         {matchReasons && matchReasons.length > 0 && (
           <div className="mb-4 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100/50">
@@ -79,35 +110,54 @@ export default function ResourceCard({ resource, inGuide, onToggleGuide }: Resou
         )}
       </div>
 
-      <div className="px-5 py-4 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between gap-3">
-        <Link
-          to={`/resource/${resource.id}`}
-          className="text-xs font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 flex items-center gap-1.5 transition-colors"
-        >
-          Details
-          <Info className="w-3.5 h-3.5" />
-        </Link>
+      <div className="px-5 py-4 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          {resource.phone && (
+            <a href={`tel:${resource.phone}`} className="p-2 bg-white border border-zinc-200 rounded-lg text-zinc-600 hover:text-emerald-600 hover:border-emerald-200 transition-colors" title="Call">
+              <Phone className="w-4 h-4" />
+            </a>
+          )}
+          {resource.website && (
+            <a href={resource.website} target="_blank" rel="noopener noreferrer" className="p-2 bg-white border border-zinc-200 rounded-lg text-zinc-600 hover:text-emerald-600 hover:border-emerald-200 transition-colors" title="Visit Website">
+              <Globe className="w-4 h-4" />
+            </a>
+          )}
+          {resource.address && (
+            <a href={`https://maps.google.com/?q=${encodeURIComponent(resource.address)}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-white border border-zinc-200 rounded-lg text-zinc-600 hover:text-emerald-600 hover:border-emerald-200 transition-colors" title="Directions">
+              <Navigation className="w-4 h-4" />
+            </a>
+          )}
+        </div>
         
-        {onToggleGuide && (
-          <button
-            onClick={() => onToggleGuide(resource.id)}
-            className={cn(
-              "text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-2",
-              inGuide 
-                ? "bg-zinc-900 text-white shadow-sm" 
-                : "bg-white border border-zinc-200 text-zinc-600 hover:border-zinc-900 hover:text-zinc-900"
-            )}
+        <div className="flex items-center gap-2 ml-auto">
+          <Link
+            to={`/resource/${resource.id}`}
+            className="text-xs font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 flex items-center gap-1.5 transition-colors"
           >
-            {inGuide ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Saved
-              </>
-            ) : (
-              "+ My List"
-            )}
-          </button>
-        )}
+            Details
+          </Link>
+          
+          {onToggleGuide && (
+            <button
+              onClick={() => onToggleGuide(resource.id)}
+              className={cn(
+                "text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg transition-all flex items-center gap-1.5",
+                inGuide 
+                  ? "bg-zinc-900 text-white shadow-sm" 
+                  : "bg-white border border-zinc-200 text-zinc-600 hover:border-zinc-900 hover:text-zinc-900"
+              )}
+            >
+              {inGuide ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Saved
+                </>
+              ) : (
+                "+ Save"
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
