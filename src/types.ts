@@ -48,6 +48,45 @@ export interface Resource {
   remarks?: string | null;
   details?: string | null;
   status: ResourceStatus;
+  
+  // New platform fields
+  org_slug?: string;
+  name_aliases?: string[];
+  search_embeddings_text?: string;
+  metadata?: {
+    is_assessment_center: boolean;
+    pathway_tags: string[];
+    referral_required: string;
+    last_verified: string;
+  };
+  eligibility?: {
+    populations: string[];
+    gender_focus: string;
+    min_age: number;
+    sober_living_required: boolean;
+  };
+  relational_graph?: {
+    parent_org?: string | null;
+    child_programs?: string[];
+    next_step_referrals?: string[];
+    required_entry_points?: string[];
+  };
+  locations?: {
+    label: string;
+    address: string;
+    city: string;
+    state: string;
+    zip: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  }[];
+  contact?: {
+    phone: string;
+    website: string;
+  };
+
   created_at: string;
   updated_at?: string;
   // Aggregate fields

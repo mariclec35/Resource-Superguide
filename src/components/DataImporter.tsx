@@ -62,99 +62,165 @@ export default function DataImporter() {
   };
 
   const handleImport = async () => {
+    console.log('handleImport triggered', { dataLength: csvData.length });
+    
     if (!csvData.trim()) {
-      setStatus({ type: 'error', message: 'Please provide CSV data or upload a file.' });
+      setStatus({ type: 'error', message: 'Please provide CSV or JSON data or upload a file before starting.' });
       return;
     }
 
-    if (!confirm('This will DELETE ALL existing resources and import new ones. Are you sure?')) {
+    if (!confirm('This will DELETE ALL existing resources and replace them with this new data. Continue?')) {
       return;
     }
 
     setImporting(true);
-    setStatus({ type: 'info', message: 'Import process started. Please do not close this window.' });
-    setProgress(0);
-    setBatchInfo('Initializing...');
+    setStatus({ type: 'info', message: 'Starting import engine... (Step 1/4)' });
+    setProgress(5);
+    setBatchInfo('Initializing session...');
 
     try {
-      // 1. Parse CSV
-      const results = Papa.parse<ImportRow>(csvData, {
-        header: true,
-        skipEmptyLines: true,
-      });
-
-      if (results.errors.length > 0) {
-        console.error('CSV Parsing errors:', results.errors);
-        throw new Error(`CSV Parsing failed: ${results.errors[0].message}`);
+      // 0. Verify Auth
+      console.log('Verifying Supabase session...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) {
+        throw new Error('Administrative session expired. Please refresh the page and sign in again.');
       }
 
-      const rows = results.data;
-      if (rows.length === 0) throw new Error('No data found in CSV.');
+      let rows: any[] = [];
+      const trimmedData = csvData.trim();
+      const isJson = trimmedData.startsWith('[') || trimmedData.startsWith('{');
 
-      setBatchInfo(`Parsed ${rows.length} rows. Cleaning database...`);
+      if (isJson) {
+        setBatchInfo('Parsing JSON structural data...');
+        try {
+          rows = JSON.parse(trimmedData);
+          if (!Array.isArray(rows)) rows = [rows];
+        } catch (e: any) {
+          throw new Error(`JSON Format Error: ${e.message}. Tip: Check for trailing commas.`);
+        }
+      } else {
+        setBatchInfo('Parsing CSV spreadsheet data...');
+        const results = Papa.parse<ImportRow>(trimmedData, {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: true
+        });
+
+        if (results.errors.length > 0) {
+          throw new Error(`CSV Format Error: ${results.errors[0].message}`);
+        }
+        rows = results.data;
+      }
+
+      if (rows.length === 0) throw new Error('Data set is empty.');
+
+      setBatchInfo(`Loaded ${rows.length} records. Wiping current database...`);
+      console.log(`Processing ${rows.length} rows`);
 
       // 2. Delete all existing resources
       const { error: deleteError } = await supabase
         .from('resources')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .neq('name', '___NON_EXISTENT_NAME_FOR_CLEAN_SLATE___');
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('Delete block failure:', deleteError);
+        throw new Error(`Data wipe failed: ${deleteError.message}. Verify "Admins can manage resources" RLS policy.`);
+      }
 
       // 3. Handle Categories
-      setBatchInfo('Updating categories...');
-      
+      setBatchInfo('Syncing taxonomy / categories...');
       const uniqueCategories = new Set<string>();
       rows.forEach(row => {
-        const cat = row.subsection || row.section || 'Other';
+        let cat = 'Other';
+        if (isJson) {
+          cat = row.category || row.metadata?.pathway_tags?.[0] || 'Other';
+        } else {
+          cat = row.subsection || row.section || 'Other';
+        }
         if (cat) uniqueCategories.add(cat);
       });
 
-      for (const catName of Array.from(uniqueCategories)) {
-        await supabase.from('categories').upsert({ name: catName }, { onConflict: 'name' });
+      const catList = Array.from(uniqueCategories);
+      console.log(`Syncing ${catList.length} categories`);
+      for (let i = 0; i < catList.length; i++) {
+        const catName = catList[i];
+        // Safely upsert identifying only by name to avoid column-misalignment errors
+        const { error: catError } = await supabase.from('categories').upsert({ 
+          name: catName,
+          sequence: i 
+        }, { onConflict: 'name' });
+        
+        if (catError) {
+          console.warn(`Category warning for "${catName}":`, catError.message);
+          // Fallback if 'sequence' column is missing or restricted
+          await supabase.from('categories').upsert({ name: catName }, { onConflict: 'name' });
+        }
       }
 
       // 4. Import Resources in batches
-      const batchSize = 50;
+      const batchSize = 25;
       const totalBatches = Math.ceil(rows.length / batchSize);
+      setProgress(10);
 
       for (let i = 0; i < rows.length; i += batchSize) {
         const currentBatchNum = Math.floor(i / batchSize) + 1;
-        setBatchInfo(`Processing batch ${currentBatchNum} of ${totalBatches}...`);
+        const currentProgress = Math.round((i / rows.length) * 100);
+        setBatchInfo(`Deploying batch ${currentBatchNum}/${totalBatches}... (${currentProgress}%)`);
         
-        const batch = rows.slice(i, i + batchSize).map(row => ({
-          name: row.name || 'Unnamed Resource',
-          category: row.subsection || row.section || 'Other',
-          subcategory: row.subcategory || null,
-          address: row.address || '',
-          city: row.city || null,
-          phone: row.phone || null,
-          email: row.email || null,
-          website: row.website || null,
-          hours: row.hours || null,
-          provides: row.provides || null,
-          remarks: row.remarks || null,
-          details: row.details || null,
-          status: 'active'
-        }));
+        const batchItems = rows.slice(i, i + batchSize);
+        const batch = batchItems.map(row => {
+          if (isJson) {
+            return {
+              name: row.name || 'Unnamed Resource',
+              category: row.category || row.metadata?.pathway_tags?.[0] || 'Other',
+              address: row.locations?.[0]?.address || row.address || '',
+              phone: row.contact?.phone || row.phone || null,
+              website: row.contact?.website || row.website || null,
+              description: row.description || row.search_embeddings_text || null,
+              status: 'active',
+              org_slug: row.org_slug || null,
+              name_aliases: row.name_aliases || [],
+              metadata: row.metadata || {},
+              eligibility: row.eligibility || {},
+              relational_graph: row.relational_graph || {},
+              locations: row.locations || [],
+              contact: row.contact || {}
+            };
+          } else {
+            return {
+              name: row.name || 'Unnamed Resource',
+              category: row.subsection || row.section || 'Other',
+              address: row.address || '',
+              phone: row.phone || null,
+              website: row.website || null,
+              description: [row.provides, row.remarks, row.details].filter(Boolean).join('\n\n') || null,
+              status: 'active'
+            };
+          }
+        });
 
-        const { error: insertError } = await supabase
-          .from('resources')
-          .insert(batch);
+        const { error: insertError } = await supabase.from('resources').insert(batch);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error(`Batch ${currentBatchNum} insert fault:`, insertError);
+          throw new Error(`Batch ${currentBatchNum} failed: ${insertError.message} (${insertError.code})`);
+        }
         
-        const currentProgress = Math.round(((i + batch.length) / rows.length) * 100);
-        setProgress(currentProgress);
+        setProgress(Math.max(10, Math.round(((i + batch.length) / rows.length) * 100)));
       }
 
-      setStatus({ type: 'success', message: `Successfully imported ${rows.length} resources across ${totalBatches} batches.` });
-      setBatchInfo('Import complete!');
+      setStatus({ type: 'success', message: `Database populated! Successfully imported ${rows.length} resources.` });
+      setBatchInfo('Operations finalized.');
       setCsvData('');
     } catch (err: any) {
-      console.error('Import error:', err);
-      setStatus({ type: 'error', message: err.message || 'An unexpected error occurred during import.' });
-      setBatchInfo('Import failed.');
+      console.error('Import process failed:', err);
+      setStatus({ 
+        type: 'error', 
+        message: err.message || 'System error during data transfer.' 
+      });
+      setBatchInfo('Process aborted.');
     } finally {
       setImporting(false);
     }
@@ -217,14 +283,14 @@ export default function DataImporter() {
               type="file"
               ref={fileInputRef}
               onChange={handleFileUpload}
-              accept=".csv"
+              accept=".csv,.json"
               className="hidden"
             />
             <div className="flex flex-col items-center gap-2">
               <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center">
                 <Upload className="w-6 h-6 text-zinc-500" />
               </div>
-              <p className="font-bold text-zinc-900">Click to upload CSV file</p>
+              <p className="font-bold text-zinc-900">Click to upload CSV or JSON file</p>
               <p className="text-xs text-zinc-400 uppercase font-black tracking-widest">or paste content below</p>
             </div>
           </div>
@@ -232,7 +298,7 @@ export default function DataImporter() {
           <textarea
             value={csvData}
             onChange={(e) => setCsvData(e.target.value)}
-            placeholder="Paste CSV content here..."
+            placeholder="Paste CSV or JSON content here..."
             className="w-full h-64 p-4 font-mono text-[10px] bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-zinc-900 outline-none transition-all resize-none"
             disabled={importing}
           />

@@ -4,6 +4,7 @@ import { Resource, Category, HomepageSettings } from '../types';
 import ResourceCard from '../components/ResourceCard';
 import { Search, Loader2, Sparkles, ArrowRight, Info, LayoutGrid, MapPin, Moon, Users, Utensils, Briefcase, Car, Heart, Shield, Home as HomeIcon, Phone, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GoogleGenAI, Type } from "@google/genai";
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -39,7 +40,7 @@ export default function Home() {
   const [myGuideIds, setMyGuideIds] = useState<string[]>([]);
 
   useEffect(() => {
-    document.title = "Twin Cities Recovery Hub";
+    document.title = "MN Recovery Hub";
     fetchData();
     const saved = localStorage.getItem('my-guide');
     if (saved) setMyGuideIds(JSON.parse(saved));
@@ -52,44 +53,54 @@ export default function Home() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resData, catData, settingsRes] = await Promise.all([
-        supabase
-          .from('resources')
-          .select('*')
-          .neq('status', 'temporarily_closed')
-          .order('name'),
-        supabase
-          .from('categories')
-          .select('*')
-          .eq('is_active', true)
-          .is('parent_id', null)
-          .order('display_order', { ascending: true })
-          .order('name'),
-        fetch('/api/homepage-settings').then(res => res.json()).catch(() => null)
-      ]);
+      // 1. Fetch Resources
+      const { data: resData, error: resError } = await supabase
+        .from('resources')
+        .select('*')
+        .neq('status', 'temporarily_closed')
+        .order('name');
 
-      if (resData.error) throw resData.error;
-      setResources(resData.data || []);
+      if (resError) throw resError;
+      setResources(resData || []);
       
-      if (settingsRes) {
-        setHomepageSettings(settingsRes);
+      // 2. Fetch Homepage Settings
+      fetch('/api/homepage-settings')
+        .then(res => res.json())
+        .then(data => setHomepageSettings(data))
+        .catch(err => console.error('Error fetching homepage settings:', err));
+
+      // 3. Fetch Categories with fallbacks
+      try {
+        let catQuery = supabase.from('categories').select('*').is('parent_id', null);
+        
+        // Try to filter by is_active if it exists, otherwise just get all
+        const { data: initialCats, error: initialError } = await catQuery;
+        
+        if (!initialError && initialCats) {
+          // Filter in memory if needed or use the data as is
+          const activeCats = initialCats.filter(c => c.is_active !== false); // Handle both true and undefined
+          
+          // Sort in memory to avoid order by failures
+          const sorted = activeCats.sort((a, b) => {
+            const orderA = a.display_order ?? a.sequence ?? 0;
+            const orderB = b.display_order ?? b.sequence ?? 0;
+            if (orderA !== orderB) return orderA - orderB;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+          
+          setDbCategories(sorted);
+        } else {
+          console.warn('Initial categories fetch failed, trying basic fallback:', initialError?.message);
+          const { data: fallbackCats } = await supabase.from('categories').select('*').limit(20);
+          setDbCategories(fallbackCats || []);
+        }
+      } catch (catErr) {
+        console.error('Category fetch error:', catErr);
+        setDbCategories([]);
       }
-      
-      // Fallback to sequence if display_order fails
-      if (catData.error) {
-        const fallbackCat = await supabase
-          .from('categories')
-          .select('*')
-          .eq('is_active', true)
-          .is('parent_id', null)
-          .order('sequence', { ascending: true })
-          .order('name');
-        setDbCategories(fallbackCat.data || []);
-      } else {
-        setDbCategories(catData.data || []);
-      }
+
     } catch (err) {
-      console.error('Error fetching data:', err);
+      console.error('Error in fetchData:', err);
     } finally {
       setLoading(false);
     }
@@ -102,16 +113,53 @@ export default function Home() {
     setIsSearching(true);
     setHasSearched(true);
     try {
+      const env = typeof window !== 'undefined' ? (window as any).ENV || {} : {};
+      const apiKey = env.GEMINI_API_KEY || import.meta.env.VITE_CUSTOM_GEMINI_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
+      
+      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+        throw new Error("API_KEY_MISSING");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: aiPrompt,
+        config: {
+          systemInstruction: `Extract structured needs from the user's community resource request.
+Return a JSON object with:
+- need_types: string[] (housing, shelter, food, treatment, recovery support, employment, transportation, legal, healthcare, mental health, youth services, family services, domestic violence support, financial assistance)
+- urgency: string (immediate, this_week, ongoing)
+- location: string
+- preferences: string[]
+- barriers: string[]
+- eligibility_clues: string[]
+- keywords: string[]
+- ai_summary: string (A short interpretation of the user's needs)`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              need_types: { type: Type.ARRAY, items: { type: Type.STRING } },
+              urgency: { type: Type.STRING },
+              location: { type: Type.STRING },
+              preferences: { type: Type.ARRAY, items: { type: Type.STRING } },
+              barriers: { type: Type.ARRAY, items: { type: Type.STRING } },
+              eligibility_clues: { type: Type.ARRAY, items: { type: Type.STRING } },
+              keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+              ai_summary: { type: Type.STRING }
+            },
+            required: ["need_types", "urgency", "preferences", "barriers", "eligibility_clues", "keywords", "ai_summary"]
+          }
+        }
+      });
+
       let extraction: any = {};
       try {
-        const aiRes = await fetch('/api/ai-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: aiPrompt })
-        });
-        if (!aiRes.ok) throw new Error('AI_SERVER_ERROR');
-        extraction = await aiRes.json();
-      } catch {
+        let text = response.text || "{}";
+        text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        extraction = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse AI response:", response.text);
         extraction = {
           need_types: [],
           urgency: 'ongoing',
@@ -216,33 +264,45 @@ export default function Home() {
 
     } catch (err: any) {
       console.error('AI Search error:', err);
+      
+      const isKeyMissing = err.message === "API_KEY_MISSING";
+      
+      // Fallback to basic keyword search if AI fails completely
       const keywords = aiPrompt.toLowerCase().split(/\W+/).filter(w => w.length > 2);
       const matched = resources.map(r => {
         const searchFields = [
-          r.name || '',
-          r.category || '',
-          r.subcategory || '',
-          r.provides || '',
-          r.remarks || '',
+          r.name || '', 
+          r.category || '', 
+          r.subcategory || '', 
+          r.provides || '', 
+          r.remarks || '', 
           r.details || '',
           r.city || '',
           r.address || ''
         ].join(' ').toLowerCase();
+        
         const matchedKeywords = keywords.filter(kw => searchFields.includes(kw));
+        // Give higher weight to name matches
         const nameMatch = keywords.some(kw => (r.name || '').toLowerCase().includes(kw));
+        
         const score = (matchedKeywords.length * 5) + (nameMatch ? 10 : 0);
-        return {
-          ...r,
-          matchScore: score,
-          matchReasons: matchedKeywords.length > 0 ? [`Matches keywords: ${matchedKeywords.slice(0, 3).join(', ')}`] : []
+        
+        return { 
+          ...r, 
+          matchScore: score, 
+          matchReasons: matchedKeywords.length > 0 ? [`Matches keywords: ${matchedKeywords.slice(0, 3).join(', ')}`] : [] 
         };
       }).filter(r => r.matchScore > 0).sort((a, b) => b.matchScore - a.matchScore);
+      
       setFilteredResources(matched);
       setAiExtraction({
-        ai_summary: "We experienced an issue with our AI service, but we searched using your keywords instead.",
+        ai_summary: isKeyMissing 
+          ? "The AI search is currently unavailable because the API key is not configured in the live environment. We've performed a standard keyword search for you instead."
+          : "We experienced an issue with our AI service, but we searched using your keywords instead.",
         need_types: [],
-        keywords,
-        is_error: true
+        keywords: keywords,
+        is_error: true,
+        error_type: isKeyMissing ? 'key_missing' : 'general'
       });
     } finally {
       setIsSearching(false);

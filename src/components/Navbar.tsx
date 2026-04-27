@@ -8,7 +8,6 @@ export default function Navbar() {
   const location = useLocation();
 
   const navLinks = [
-    { name: 'Our Mission', href: '/mission', icon: ShieldCheck },
     { 
       name: 'Find Resources', 
       href: '/', 
@@ -19,6 +18,7 @@ export default function Navbar() {
     },
     { name: 'Find Meetings', href: '/meetings', icon: Users },
     { name: 'Find Events', href: '/events', icon: Calendar },
+    { name: 'Our Mission', href: '/mission', icon: ShieldCheck },
   ];
 
   return (
@@ -28,7 +28,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2.5 group">
               <div className="bg-emerald-600 w-9 h-9 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-emerald-700 transition-colors border border-emerald-500/20">
-                <span className="text-white font-black text-base tracking-tighter leading-none select-none italic">TC</span>
+                <span className="text-white font-black text-base tracking-tighter leading-none select-none italic">MN</span>
               </div>
               <span className="text-lg font-black tracking-tight text-zinc-900">
                 Recovery Hub

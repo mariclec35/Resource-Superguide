@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 
 export default function PrivacyPolicy() {
   useEffect(() => {
-    document.title = "Twin Cities Recovery Hub";
+    document.title = "MN Recovery Hub";
   }, []);
 
   return (
@@ -10,7 +10,7 @@ export default function PrivacyPolicy() {
       <div className="max-w-3xl mx-auto">
         <header className="mb-12 text-center">
           <h1 className="text-4xl font-black text-zinc-900 mb-2 tracking-tight">Privacy Policy</h1>
-          <p className="text-xl font-bold text-emerald-600 mb-4">Twin Cities Recovery Hub</p>
+          <p className="text-xl font-bold text-emerald-600 mb-4">MN Recovery Hub</p>
           <p className="text-zinc-400 text-sm">Effective Date: February 25, 2026</p>
         </header>
 
@@ -22,10 +22,10 @@ export default function PrivacyPolicy() {
             </h2>
             <div className="pl-11 space-y-4">
               <p className="text-zinc-600 leading-relaxed">
-                Twin Cities Recovery Hub (“we,” “our,” or “us”) is owned and operated by Christopher Maricle.
+                MN Recovery Hub (“we,” “our,” or “us”) is owned and operated by Christopher Maricle.
               </p>
               <p className="text-zinc-600 leading-relaxed">
-                This Privacy Policy explains how information is collected, used, disclosed, and safeguarded when you access or use the Twin Cities Recovery Hub website and related services.
+                This Privacy Policy explains how information is collected, used, disclosed, and safeguarded when you access or use the MN Recovery Hub website and related services.
               </p>
             </div>
           </section>
@@ -135,7 +135,7 @@ export default function PrivacyPolicy() {
             </h2>
             <div className="pl-11">
               <p className="text-zinc-600 leading-relaxed">
-                Twin Cities Recovery Hub is not intended for use by children under the age of 13. We do not knowingly collect personal information from children under 13.
+                MN Recovery Hub is not intended for use by children under the age of 13. We do not knowingly collect personal information from children under 13.
               </p>
             </div>
           </section>
@@ -155,7 +155,7 @@ export default function PrivacyPolicy() {
           <section className="pt-10 border-t border-zinc-100">
             <h2 className="text-xl font-bold text-zinc-900 mb-6">Contact Information</h2>
             <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-100">
-              <p className="font-bold text-zinc-900 mb-1">Twin Cities Recovery Hub</p>
+              <p className="font-bold text-zinc-900 mb-1">MN Recovery Hub</p>
               <p className="text-zinc-600 text-sm mb-4">Owned and Operated by Christopher Maricle</p>
               <a 
                 href="mailto:Mariclec35@gmail.com" 

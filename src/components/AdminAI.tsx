@@ -367,7 +367,7 @@ export default function AdminAI() {
       const chat = ai.chats.create({
         model: "gemini-3-flash-preview",
         config: {
-          systemInstruction: "You are a highly capable Admin AI Assistant for the Twin Cities Recovery Hub platform. Your goal is to help administrators manage the system efficiently. You can perform CRUD operations on resources, categories, and users. You can also review and update community reports and error logs. Always be professional, concise, and confirm actions before performing them if they are destructive (like deleting). If you need more information to perform a task, ask the user. You have access to the database through tool calls.",
+          systemInstruction: "You are a highly capable Admin AI Assistant for the MN Recovery Hub platform. Your goal is to help administrators manage the system efficiently. You can perform CRUD operations on resources, categories, and users. You can also review and update community reports and error logs. Always be professional, concise, and confirm actions before performing them if they are destructive (like deleting). If you need more information to perform a task, ask the user. You have access to the database through tool calls.",
           tools: tools
         },
         history: messages.map(m => ({ role: m.role, parts: m.parts }))

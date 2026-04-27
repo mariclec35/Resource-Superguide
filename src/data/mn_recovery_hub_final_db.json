@@ -1,0 +1,163 @@
+[
+  {
+    "org_slug": "mn-recovery-hub-central",
+    "name": "MN Recovery Hub Central",
+    "name_aliases": [
+      "Central Support Hub",
+      "Recovery Navigator Center"
+    ],
+    "search_embeddings_text": "MN Recovery Hub Central is the primary navigational node for recovery services in Minnesota. It provides comprehensive peer recovery support, professional recovery coaching training, and community resource mapping. As a non-clinical organization, it focuses on building recovery capital through peer-led advocacy, mutual aid meeting coordination, and systemic navigation assistance.",
+    "metadata": {
+      "is_assessment_center": false,
+      "pathway_tags": [
+        "peer-led",
+        "all-recovery",
+        "non-12-step",
+        "harm-reduction"
+      ],
+      "referral_required": "None / Walk-in",
+      "last_verified": "2026-04-27"
+    },
+    "eligibility": {
+      "populations": [
+        "individuals-in-recovery",
+        "families",
+        "allies"
+      ],
+      "gender_focus": "any",
+      "min_age": 0,
+      "sober_living_required": false
+    },
+    "relational_graph": {
+      "parent_org": null,
+      "child_programs": [
+        "peer-navigator-training",
+        "hub-support-meetings"
+      ],
+      "next_step_referrals": [
+        "nuway-alliance",
+        "wayside-recovery-center"
+      ]
+    },
+    "locations": [
+      {
+        "label": "Main St. Paul Office",
+        "address": "1821 University Ave W, Suite S-100",
+        "city": "St. Paul",
+        "state": "MN",
+        "zip": "55104",
+        "coordinates": {
+          "lat": 44.9557,
+          "lng": -93.1843
+        }
+      }
+    ],
+    "contact": {
+      "phone": "(612) 584-4158",
+      "website": "https://mnrecoveryhub.org"
+    }
+  },
+  {
+    "org_slug": "nuway-alliance",
+    "name": "NUWAY",
+    "name_aliases": [
+      "NUWAY Counseling Center",
+      "NUWAY IOP"
+    ],
+    "search_embeddings_text": "A specialized provider for co-occurring substance use and mental health disorder treatment. MN Recovery Hub partner for intensive outpatient (IOP) services and recovery-supportive housing (RSH). Provides integrated clinical assessments and Rule 25 evaluations across the Twin Cities metro area.",
+    "metadata": {
+      "is_assessment_center": true,
+      "pathway_tags": [
+        "clinical",
+        "harm-reduction",
+        "abstinence-supported"
+      ],
+      "referral_required": "Appointment Required",
+      "last_verified": "2026-04-27"
+    },
+    "eligibility": {
+      "populations": [
+        "adults",
+        "dual-diagnosis"
+      ],
+      "gender_focus": "any",
+      "min_age": 18,
+      "sober_living_required": false
+    },
+    "relational_graph": {
+      "parent_org": "NUWAY Alliance",
+      "next_step_referrals": [
+        "mn-recovery-hub-central"
+      ]
+    },
+    "locations": [
+      {
+        "label": "NUWAY Central",
+        "address": "2518 1st Ave S",
+        "city": "Minneapolis",
+        "state": "MN",
+        "zip": "55404"
+      },
+      {
+        "label": "NUWAY St. Paul",
+        "address": "545 West 7th Street",
+        "city": "St. Paul",
+        "state": "MN",
+        "zip": "55102"
+      }
+    ],
+    "contact": {
+      "phone": "(612) 767-0309",
+      "website": "https://nuway.org"
+    }
+  },
+  {
+    "org_slug": "avivo-village",
+    "name": "Avivo Village",
+    "name_aliases": [
+      "Avivo Tiny Houses",
+      "North Loop Shelter"
+    ],
+    "search_embeddings_text": "An indoor tiny house shelter community providing low-barrier, harm-reduction focused dwellings for adults experiencing homelessness. Features on-site health and recovery support services. Integrated with the MN Recovery Hub network for long-term housing transitions.",
+    "metadata": {
+      "is_assessment_center": false,
+      "pathway_tags": [
+        "harm-reduction",
+        "low-barrier",
+        "housing-first"
+      ],
+      "referral_required": "Referral via Adult Shelter Connect",
+      "last_verified": "2026-04-27"
+    },
+    "eligibility": {
+      "populations": [
+        "homeless-adults"
+      ],
+      "gender_focus": "any",
+      "min_age": 18,
+      "sober_living_required": false
+    },
+    "relational_graph": {
+      "parent_org": "Avivo",
+      "required_entry_points": [
+        "adult-shelter-connect"
+      ],
+      "next_step_referrals": [
+        "mn-recovery-hub-central"
+      ]
+    },
+    "locations": [
+      {
+        "label": "Avivo Village",
+        "address": "1251 Washington Ave N",
+        "city": "Minneapolis",
+        "state": "MN",
+        "zip": "55401"
+      }
+    ],
+    "contact": {
+      "phone": "(612) 752-8000",
+      "website": "https://avivomn.org/avivovillage/"
+    }
+  }
+]

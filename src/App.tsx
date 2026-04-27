@@ -40,12 +40,12 @@ export default function App() {
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
               <div className="bg-emerald-600 w-6 h-6 rounded flex items-center justify-center shadow-sm">
-                <span className="text-white font-black text-[10px] tracking-tighter italic">TC</span>
+                <span className="text-white font-black text-[10px] tracking-tighter italic">MN</span>
               </div>
               <span className="font-bold tracking-tight text-zinc-900">Recovery Hub</span>
             </div>
             <p className="text-zinc-400 text-sm">
-              &copy; {new Date().getFullYear()} Twin Cities Recovery Hub. Supporting Saint Paul & Minneapolis communities.
+              &copy; {new Date().getFullYear()} MN Recovery Hub. Supporting Minnesota recovery communities.
             </p>
             <div className="flex gap-6">
               <Link to="/mission" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Our Mission</Link>

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 
 export default function TermsOfService() {
   useEffect(() => {
-    document.title = "Twin Cities Recovery Hub";
+    document.title = "MN Recovery Hub";
   }, []);
 
   return (
@@ -10,7 +10,7 @@ export default function TermsOfService() {
       <div className="max-w-3xl mx-auto">
         <header className="mb-12 text-center">
           <h1 className="text-4xl font-black text-zinc-900 mb-2 tracking-tight uppercase">Terms of Service</h1>
-          <p className="text-xl font-bold text-emerald-600 mb-4">Twin Cities Recovery Hub</p>
+          <p className="text-xl font-bold text-emerald-600 mb-4">MN Recovery Hub</p>
           <p className="text-zinc-400 text-sm">Effective Date: February 25, 2026</p>
         </header>
 
@@ -22,7 +22,7 @@ export default function TermsOfService() {
             </h2>
             <div className="pl-11">
               <p className="text-zinc-600 leading-relaxed">
-                By accessing or using Twin Cities Recovery Hub (the “Service”), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.
+                By accessing or using MN Recovery Hub (the “Service”), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.
               </p>
             </div>
           </section>
@@ -34,7 +34,7 @@ export default function TermsOfService() {
             </h2>
             <div className="pl-11">
               <p className="text-zinc-600 leading-relaxed">
-                Twin Cities Recovery Hub is owned and operated by Christopher Maricle.
+                MN Recovery Hub is owned and operated by Christopher Maricle.
               </p>
             </div>
           </section>
@@ -70,7 +70,7 @@ export default function TermsOfService() {
             </h2>
             <div className="pl-11 space-y-4">
               <p className="text-zinc-600 leading-relaxed">
-                You may be able to submit content such as guides, resources, comments, or links (“User Content”). You retain ownership of your User Content, but you grant Twin Cities Recovery Hub a non-exclusive, worldwide, royalty-free license to host, store, reproduce, display, and distribute your User Content solely for operating and improving the Service.
+                You may be able to submit content such as guides, resources, comments, or links (“User Content”). You retain ownership of your User Content, but you grant MN Recovery Hub a non-exclusive, worldwide, royalty-free license to host, store, reproduce, display, and distribute your User Content solely for operating and improving the Service.
               </p>
               <p className="text-zinc-600 leading-relaxed">
                 You are responsible for your User Content and agree not to submit content that is unlawful, harmful, deceptive, infringing, or violates the rights of others.
@@ -103,7 +103,7 @@ export default function TermsOfService() {
             </h2>
             <div className="pl-11">
               <p className="text-zinc-600 leading-relaxed">
-                All site content, branding, design, and code (excluding User Content) are owned by Twin Cities Recovery Hub and/or its licensors and protected by applicable intellectual property laws. You may not copy, modify, distribute, or create derivative works without permission.
+                All site content, branding, design, and code (excluding User Content) are owned by MN Recovery Hub and/or its licensors and protected by applicable intellectual property laws. You may not copy, modify, distribute, or create derivative works without permission.
               </p>
             </div>
           </section>
@@ -115,7 +115,7 @@ export default function TermsOfService() {
             </h2>
             <div className="pl-11">
               <p className="text-zinc-600 leading-relaxed">
-                The Service may contain links to third-party websites or resources. Twin Cities Recovery Hub is not responsible for third-party content, services, or policies.
+                The Service may contain links to third-party websites or resources. MN Recovery Hub is not responsible for third-party content, services, or policies.
               </p>
             </div>
           </section>
@@ -127,7 +127,7 @@ export default function TermsOfService() {
             </h2>
             <div className="pl-11">
               <p className="text-zinc-600 leading-relaxed italic">
-                The Service is provided “AS IS” and “AS AVAILABLE” without warranties of any kind, express or implied. Twin Cities Recovery Hub does not guarantee the accuracy, completeness, or usefulness of content on the Service.
+                The Service is provided “AS IS” and “AS AVAILABLE” without warranties of any kind, express or implied. MN Recovery Hub does not guarantee the accuracy, completeness, or usefulness of content on the Service.
               </p>
             </div>
           </section>
@@ -139,7 +139,7 @@ export default function TermsOfService() {
             </h2>
             <div className="pl-11">
               <p className="text-zinc-600 leading-relaxed">
-                To the maximum extent permitted by law, Twin Cities Recovery Hub and Christopher Maricle will not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of data, use, goodwill, or profits arising from or related to your use of the Service.
+                To the maximum extent permitted by law, MN Recovery Hub and Christopher Maricle will not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of data, use, goodwill, or profits arising from or related to your use of the Service.
               </p>
             </div>
           </section>
@@ -183,7 +183,7 @@ export default function TermsOfService() {
           <section className="pt-10 border-t border-zinc-100">
             <h2 className="text-xl font-bold text-zinc-900 mb-6">Contact Information</h2>
             <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-100">
-              <p className="font-bold text-zinc-900 mb-1">Twin Cities Recovery Hub</p>
+              <p className="font-bold text-zinc-900 mb-1">MN Recovery Hub</p>
               <p className="text-zinc-600 text-sm mb-4">Owned and Operated by Christopher Maricle</p>
               <a 
                 href="mailto:Mariclec35@gmail.com" 

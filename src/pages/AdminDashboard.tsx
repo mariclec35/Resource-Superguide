@@ -534,7 +534,7 @@ function SearchAnalyticsDashboard() {
           // Extract top terms
           const terms: Record<string, number> = {};
           data.forEach(l => {
-            l.extracted_needs_json?.need_types?.forEach((n: string) => {
+            l.extracted_needs?.need_types?.forEach((n: string) => {
               terms[n] = (terms[n] || 0) + 1;
             });
           });
@@ -662,7 +662,7 @@ function SearchAnalyticsDashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
-                            {log.extracted_needs_json?.need_types?.map((n: string, i: number) => (
+                            {log.extracted_needs?.need_types?.map((n: string, i: number) => (
                               <span key={i} className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 text-[10px] font-bold uppercase tracking-wider">
                                 {n}
                               </span>
@@ -754,7 +754,7 @@ function SearchAnalyticsDashboard() {
                     <div>
                       <p className="text-sm font-bold text-zinc-900">"{log.raw_prompt}"</p>
                       <div className="flex gap-1 mt-1">
-                        {log.extracted_needs_json?.need_types?.map((n: string, j: number) => (
+                        {log.extracted_needs?.need_types?.map((n: string, j: number) => (
                           <span key={j} className="text-[10px] font-black text-red-500 uppercase tracking-widest">
                             {n}
                           </span>
@@ -1746,8 +1746,6 @@ function SortableCategoryItem({
     .filter((c: any) => c.parent_id === category.id)
     .sort((a: any, b: any) => a.display_order - b.display_order);
 
-  const subSensors = useSensors(useSensor(PointerSensor));
-
   return (
     <div ref={setNodeRef} style={style} className="space-y-2">
       <div className={`
@@ -1834,7 +1832,7 @@ function SortableCategoryItem({
       {/* Subcategories */}
       <div className="ml-12 space-y-2">
         <DndContext 
-          sensors={subSensors}
+          sensors={useSensors(useSensor(PointerSensor))}
           collisionDetection={closestCenter}
           onDragEnd={onDragEnd}
         >
@@ -1989,7 +1987,7 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
     setLoading(true);
     const formData = new FormData(e.currentTarget);
     
-    const data = {
+    const data: any = {
       name: formData.get('name') as string,
       category: formData.get('category') as string,
       subcategory: (formData.get('subcategory') as string) || null,
@@ -2002,7 +2000,27 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
       details: (formData.get('details') as string) || null,
       hours: (formData.get('hours') as string) || null,
       status: (formData.get('status') as string) || 'active',
+      org_slug: (formData.get('org_slug') as string) || null,
+      search_embeddings_text: (formData.get('search_embeddings_text') as string) || null,
     };
+
+    // Handle array fields
+    const aliasesRaw = formData.get('name_aliases') as string;
+    if (aliasesRaw) {
+      data.name_aliases = aliasesRaw.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    // Handle JSON fields
+    ['metadata', 'eligibility', 'relational_graph', 'locations', 'contact'].forEach(field => {
+      const val = formData.get(field) as string;
+      if (val) {
+        try {
+          data[field] = JSON.parse(val);
+        } catch (e) {
+          console.error(`Invalid JSON for ${field}`);
+        }
+      }
+    });
 
     console.log('Attempting to save resource:', data);
 
@@ -2025,7 +2043,7 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
 
   return (
     <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+      <div className="bg-white rounded-3xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
         <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
           <h2 className="text-2xl font-black text-zinc-900 tracking-tight">
             {resource ? 'Edit Resource' : 'Add New Resource'}
@@ -2036,7 +2054,7 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
         </div>
 
         <form id="resource-form" onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="space-y-6">
               <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Basic Info</h3>
               <div>
@@ -2065,10 +2083,14 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
                   <option value="temporarily_closed">Temporarily Closed</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Org Slug (Universal ID)</label>
+                <input name="org_slug" defaultValue={resource?.org_slug || ''} placeholder="e.g. nuway-alliance" className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all" />
+              </div>
             </div>
 
             <div className="space-y-6">
-              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Contact & Details</h3>
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Location & Contact</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-zinc-500 mb-1.5">Address</label>
@@ -2091,21 +2113,59 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
               </div>
               <div>
                 <label className="block text-xs font-bold text-zinc-500 mb-1.5">Hours</label>
-                <textarea name="hours" defaultValue={resource?.hours || ''} rows={2} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+                <textarea name="hours" defaultValue={resource?.hours || ''} rows={4} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1.5">What they provide</label>
-                <textarea name="provides" defaultValue={resource?.provides || ''} rows={3} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Important Remarks</label>
-                <textarea name="remarks" defaultValue={resource?.remarks || ''} rows={2} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Additional Details</label>
-                <textarea name="details" defaultValue={resource?.details || ''} rows={2} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+                <label className="block text-xs font-bold text-zinc-500 mb-1.5">Aliases (Comma separated)</label>
+                <textarea name="name_aliases" defaultValue={resource?.name_aliases?.join(', ') || ''} rows={2} placeholder="e.g. NUWAY Counseling, NUWAY Central" className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none font-medium" />
               </div>
             </div>
+
+            <div className="space-y-6">
+              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Platform Strategy (Structured)</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-500 mb-1.5">Search Intelligence Summary (Embeddings Text)</label>
+                  <textarea name="search_embeddings_text" defaultValue={resource?.search_embeddings_text || ''} rows={4} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none text-[10px] font-mono" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Intelligence Metadata (JSON)</label>
+                  <textarea name="metadata" defaultValue={JSON.stringify(resource?.metadata || { is_assessment_center: false, pathway_tags: [], referral_required: "" }, null, 2)} rows={3} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none text-[10px] font-mono bg-zinc-50" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Eligibility Rules (JSON)</label>
+                  <textarea name="eligibility" defaultValue={JSON.stringify(resource?.eligibility || { populations: [], gender_focus: "any", min_age: 0, sober_living_required: false }, null, 2)} rows={3} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none text-[10px] font-mono bg-zinc-50" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Relational Graph (JSON)</label>
+                  <textarea name="relational_graph" defaultValue={JSON.stringify(resource?.relational_graph || { parent_org: null, next_step_referrals: [] }, null, 2)} rows={3} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none text-[10px] font-mono bg-zinc-50" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Network Locations (JSON)</label>
+                  <textarea name="locations" defaultValue={JSON.stringify(resource?.locations || [], null, 2)} rows={3} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none text-[10px] font-mono bg-zinc-50" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-8 md:col-span-3">
+             <div className="space-y-6">
+                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Legacy Content Fields</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 mb-1.5">What they provide</label>
+                    <textarea name="provides" defaultValue={resource?.provides || ''} rows={4} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 mb-1.5">Important Remarks</label>
+                    <textarea name="remarks" defaultValue={resource?.remarks || ''} rows={4} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 mb-1.5">Additional Details</label>
+                    <textarea name="details" defaultValue={resource?.details || ''} rows={4} className="w-full p-3 rounded-xl border border-zinc-200 outline-none focus:ring-2 focus:ring-zinc-900 transition-all resize-none" />
+                  </div>
+                </div>
+             </div>
           </div>
         </form>
 

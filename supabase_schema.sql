@@ -10,7 +10,16 @@ CREATE TABLE resources (
   website TEXT,
   description TEXT,
   status TEXT NOT NULL DEFAULT 'active',   -- 'active','needs_verification','temporarily_closed'
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  org_slug TEXT UNIQUE,
+  name_aliases TEXT[],
+  search_embeddings_text TEXT,
+  metadata JSONB,
+  eligibility JSONB,
+  relational_graph JSONB,
+  locations JSONB,
+  contact JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 2. Create categories table
