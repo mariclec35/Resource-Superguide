@@ -116,7 +116,7 @@ export default function EventDetailPage() {
                 
                 <div className="flex flex-col gap-3 pt-4 border-t border-zinc-100">
                   {event.website && (
-                    <a href={event.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-zinc-600 hover:text-emerald-600 transition-colors">
+                    <a href={event.website} rel="noopener noreferrer" className="flex items-center gap-3 text-zinc-600 hover:text-emerald-600 transition-colors">
                       <Globe className="w-5 h-5 text-zinc-400" />
                       {event.website.replace(/^https?:\/\//, '')}
                     </a>
@@ -168,7 +168,6 @@ export default function EventDetailPage() {
                   <div className="pt-6 border-t border-zinc-100">
                     <a 
                       href={event.registration_link}
-                      target="_blank"
                       rel="noopener noreferrer"
                       className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
                     >

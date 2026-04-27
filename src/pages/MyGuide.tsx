@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { Resource } from '../types';
 import ResourceCard from '../components/ResourceCard';
 import { Printer, FileDown, Trash2, Loader2, BookOpen, AlertCircle } from 'lucide-react';
@@ -30,12 +29,9 @@ export default function MyGuide() {
   const fetchResources = async (ids: string[]) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('resources')
-        .select('*')
-        .in('id', ids);
-
-      if (error) throw error;
+      const response = await fetch(`/api/resources?ids=${encodeURIComponent(ids.join(','))}`);
+      if (!response.ok) throw new Error('Failed to fetch guide resources');
+      const data = await response.json();
       setResources(data || []);
     } catch (err) {
       console.error('Error fetching guide resources:', err);

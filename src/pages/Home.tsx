@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { Resource, Category, HomepageSettings } from '../types';
 import ResourceCard from '../components/ResourceCard';
 import { Search, Loader2, Sparkles, ArrowRight, Info, LayoutGrid, MapPin, Moon, Users, Utensils, Briefcase, Car, Heart, Shield, Home as HomeIcon, Phone, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -15,6 +13,57 @@ function cn(...inputs: ClassValue[]) {
 const iconMap: Record<string, React.ElementType> = {
   Moon, Users, Utensils, Briefcase, Car, Heart, Shield, Home: HomeIcon, Phone, HelpCircle, Search
 };
+
+function normalizeResource(resource: Resource): Resource {
+  const primaryLocation = resource.locations?.[0];
+
+  return {
+    ...resource,
+    address: resource.address || primaryLocation?.address || '',
+    city: resource.city || primaryLocation?.city || null,
+    phone: resource.phone || resource.contact?.phone || null,
+    website: resource.website || resource.contact?.website || null,
+    provides: resource.provides || resource.search_embeddings_text || null,
+  };
+}
+
+function getResourceSearchFields(resource: Resource) {
+  const aliases = resource.name_aliases || [];
+  const pathTags = resource.metadata?.pathway_tags || [];
+  const populations = resource.eligibility?.populations || [];
+  const childPrograms = resource.relational_graph?.child_programs || [];
+  const nextStepReferrals = resource.relational_graph?.next_step_referrals || [];
+  const locationBits = (resource.locations || []).flatMap((location) => [
+    location.label || '',
+    location.address || '',
+    location.city || '',
+    location.state || '',
+    location.zip || '',
+  ]);
+
+  return [
+    resource.name || '',
+    resource.category || '',
+    resource.subcategory || '',
+    resource.city || '',
+    resource.address || '',
+    resource.phone || '',
+    resource.website || '',
+    resource.provides || '',
+    resource.remarks || '',
+    resource.details || '',
+    resource.search_embeddings_text || '',
+    resource.metadata?.referral_required || '',
+    ...aliases,
+    ...pathTags,
+    ...populations,
+    ...childPrograms,
+    ...nextStepReferrals,
+    ...locationBits,
+  ]
+    .join(' ')
+    .toLowerCase();
+}
 
 export default function Home() {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -54,14 +103,10 @@ export default function Home() {
     setLoading(true);
     try {
       // 1. Fetch Resources
-      const { data: resData, error: resError } = await supabase
-        .from('resources')
-        .select('*')
-        .neq('status', 'temporarily_closed')
-        .order('name');
-
-      if (resError) throw resError;
-      setResources(resData || []);
+      const resourceResponse = await fetch('/api/resources');
+      if (!resourceResponse.ok) throw new Error('Failed to fetch resources');
+      const resData = await resourceResponse.json();
+      setResources((resData || []).map(normalizeResource));
       
       // 2. Fetch Homepage Settings
       fetch('/api/homepage-settings')
@@ -71,12 +116,9 @@ export default function Home() {
 
       // 3. Fetch Categories with fallbacks
       try {
-        let catQuery = supabase.from('categories').select('*').is('parent_id', null);
-        
-        // Try to filter by is_active if it exists, otherwise just get all
-        const { data: initialCats, error: initialError } = await catQuery;
-        
-        if (!initialError && initialCats) {
+        const categoryResponse = await fetch('/api/categories');
+        if (categoryResponse.ok) {
+          const initialCats = await categoryResponse.json();
           // Filter in memory if needed or use the data as is
           const activeCats = initialCats.filter(c => c.is_active !== false); // Handle both true and undefined
           
@@ -90,9 +132,8 @@ export default function Home() {
           
           setDbCategories(sorted);
         } else {
-          console.warn('Initial categories fetch failed, trying basic fallback:', initialError?.message);
-          const { data: fallbackCats } = await supabase.from('categories').select('*').limit(20);
-          setDbCategories(fallbackCats || []);
+          console.warn('Initial categories fetch failed, using empty fallback');
+          setDbCategories([]);
         }
       } catch (catErr) {
         console.error('Category fetch error:', catErr);
@@ -113,132 +154,21 @@ export default function Home() {
     setIsSearching(true);
     setHasSearched(true);
     try {
-      const env = typeof window !== 'undefined' ? (window as any).ENV || {} : {};
-      const apiKey = env.GEMINI_API_KEY || import.meta.env.VITE_CUSTOM_GEMINI_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
-      
-      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-        throw new Error("API_KEY_MISSING");
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: aiPrompt,
-        config: {
-          systemInstruction: `Extract structured needs from the user's community resource request.
-Return a JSON object with:
-- need_types: string[] (housing, shelter, food, treatment, recovery support, employment, transportation, legal, healthcare, mental health, youth services, family services, domestic violence support, financial assistance)
-- urgency: string (immediate, this_week, ongoing)
-- location: string
-- preferences: string[]
-- barriers: string[]
-- eligibility_clues: string[]
-- keywords: string[]
-- ai_summary: string (A short interpretation of the user's needs)`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              need_types: { type: Type.ARRAY, items: { type: Type.STRING } },
-              urgency: { type: Type.STRING },
-              location: { type: Type.STRING },
-              preferences: { type: Type.ARRAY, items: { type: Type.STRING } },
-              barriers: { type: Type.ARRAY, items: { type: Type.STRING } },
-              eligibility_clues: { type: Type.ARRAY, items: { type: Type.STRING } },
-              keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-              ai_summary: { type: Type.STRING }
-            },
-            required: ["need_types", "urgency", "preferences", "barriers", "eligibility_clues", "keywords", "ai_summary"]
-          }
-        }
+      const response = await fetch('/api/search/resources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt }),
       });
 
-      let extraction: any = {};
-      try {
-        let text = response.text || "{}";
-        text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        extraction = JSON.parse(text);
-      } catch (e) {
-        console.error("Failed to parse AI response:", response.text);
-        extraction = {
-          need_types: [],
-          urgency: 'ongoing',
-          location: '',
-          preferences: [],
-          barriers: [],
-          eligibility_clues: [],
-          keywords: aiPrompt.toLowerCase().split(' ').filter(w => w.length > 3),
-          ai_summary: "We searched using your keywords."
-        };
+      if (!response.ok) {
+        throw new Error('SEARCH_API_FAILED');
       }
 
+      const payload = await response.json();
+      const extraction = payload.extraction || {};
+      const matched = (payload.results || []).map(normalizeResource);
+
       setAiExtraction(extraction);
-
-      const promptWords = aiPrompt.toLowerCase().split(/\W+/).filter(w => w.length > 2);
-
-      const matched = resources.map(r => {
-        let score = 0;
-        const reasons: string[] = [];
-        
-        const needTypes = Array.isArray(extraction.need_types) ? extraction.need_types : [];
-        const resourceCategory = (r.category || '').toLowerCase();
-        const resourceSubcategory = (r.subcategory || '').toLowerCase();
-        const resourceProvides = (r.provides || '').toLowerCase();
-        const resourceName = (r.name || '').toLowerCase();
-        const resourceDetails = (r.details || '').toLowerCase();
-        const resourceRemarks = (r.remarks || '').toLowerCase();
-        const searchFields = [resourceName, resourceCategory, resourceSubcategory, resourceProvides, resourceRemarks, resourceDetails].join(' ');
-
-        // 1. Category Matching (Flexible)
-        const catMatch = needTypes.some((nt: string) => {
-          const ntLower = nt.toLowerCase();
-          return resourceCategory.includes(ntLower) || 
-                 resourceSubcategory.includes(ntLower) ||
-                 ntLower.includes(resourceCategory) ||
-                 (resourceCategory && ntLower.split(/\W+/).some(word => resourceCategory.includes(word)));
-        });
-
-        if (catMatch) {
-          score += 15;
-          reasons.push(`Matches your need for ${needTypes.join(', ')}`);
-        }
-
-        // 2. Location Matching
-        if (extraction.location) {
-          const locLower = extraction.location.toLowerCase();
-          const cityLower = (r.city || '').toLowerCase();
-          const addrLower = (r.address || '').toLowerCase();
-          if (cityLower.includes(locLower) || locLower.includes(cityLower) || addrLower.includes(locLower)) {
-            score += 20;
-            reasons.push(`Located in or near ${extraction.location}`);
-          }
-        }
-
-        // 3. Keyword Matching (AI Extracted)
-        const keywords = Array.isArray(extraction.keywords) ? extraction.keywords : [];
-        const matchedKeywords = keywords.filter((kw: string) => searchFields.includes(kw.toLowerCase()));
-        if (matchedKeywords.length > 0) {
-          score += matchedKeywords.length * 8;
-          reasons.push(`Matches keywords: ${matchedKeywords.join(', ')}`);
-        }
-
-        // 4. Raw Prompt Word Matching (Fallback/Boost)
-        const matchedPromptWords = promptWords.filter(word => searchFields.includes(word));
-        if (matchedPromptWords.length > 0) {
-          score += matchedPromptWords.length * 2;
-          if (reasons.length === 0) reasons.push('Matches your search terms');
-        }
-
-        // 5. Urgency Boost
-        if (extraction.urgency === 'immediate' && (searchFields.includes('emergency') || searchFields.includes('shelter') || searchFields.includes('urgent') || searchFields.includes('crisis'))) {
-          score += 15;
-          reasons.push('Offers immediate/emergency support');
-        }
-
-        return { ...r, matchScore: score, matchReasons: reasons };
-      })
-      .filter(r => r.matchScore > 0)
-      .sort((a, b) => b.matchScore - a.matchScore);
 
       setFilteredResources(matched);
 
@@ -264,26 +194,15 @@ Return a JSON object with:
 
     } catch (err: any) {
       console.error('AI Search error:', err);
-      
-      const isKeyMissing = err.message === "API_KEY_MISSING";
-      
-      // Fallback to basic keyword search if AI fails completely
+
       const keywords = aiPrompt.toLowerCase().split(/\W+/).filter(w => w.length > 2);
       const matched = resources.map(r => {
-        const searchFields = [
-          r.name || '', 
-          r.category || '', 
-          r.subcategory || '', 
-          r.provides || '', 
-          r.remarks || '', 
-          r.details || '',
-          r.city || '',
-          r.address || ''
-        ].join(' ').toLowerCase();
+        const searchFields = getResourceSearchFields(r);
         
         const matchedKeywords = keywords.filter(kw => searchFields.includes(kw));
         // Give higher weight to name matches
-        const nameMatch = keywords.some(kw => (r.name || '').toLowerCase().includes(kw));
+        const aliasText = (r.name_aliases || []).join(' ').toLowerCase();
+        const nameMatch = keywords.some(kw => (r.name || '').toLowerCase().includes(kw) || aliasText.includes(kw));
         
         const score = (matchedKeywords.length * 5) + (nameMatch ? 10 : 0);
         
@@ -296,13 +215,11 @@ Return a JSON object with:
       
       setFilteredResources(matched);
       setAiExtraction({
-        ai_summary: isKeyMissing 
-          ? "The AI search is currently unavailable because the API key is not configured in the live environment. We've performed a standard keyword search for you instead."
-          : "We experienced an issue with our AI service, but we searched using your keywords instead.",
+        ai_summary: "We experienced an issue with the ranked search service, but we searched using your keywords instead.",
         need_types: [],
         keywords: keywords,
         is_error: true,
-        error_type: isKeyMissing ? 'key_missing' : 'general'
+        error_type: 'general'
       });
     } finally {
       setIsSearching(false);
@@ -324,7 +241,8 @@ Return a JSON object with:
         } else {
           matched = matched.filter(r => 
             (r.category || '').toLowerCase().includes(browseCategory.toLowerCase()) || 
-            (r.subcategory || '').toLowerCase().includes(browseCategory.toLowerCase())
+            (r.subcategory || '').toLowerCase().includes(browseCategory.toLowerCase()) ||
+            (r.metadata?.pathway_tags || []).some(tag => tag.toLowerCase().includes(browseCategory.toLowerCase()))
           );
         }
       }

@@ -89,6 +89,7 @@ export interface Resource {
 
   created_at: string;
   updated_at?: string;
+  last_verified?: string;
   // Aggregate fields
   average_rating?: number;
   review_count?: number;

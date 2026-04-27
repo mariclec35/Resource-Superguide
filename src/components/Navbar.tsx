@@ -3,6 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { MapPin, BookOpen, ShieldCheck, Menu, X, Calendar, Users, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+function NavBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-zinc-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-zinc-500">
+      {label}
+    </span>
+  );
+}
+
 export default function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
   const location = useLocation();
@@ -16,8 +24,8 @@ export default function Navbar() {
         { name: 'My Resources', href: '/my-guide', icon: BookOpen }
       ]
     },
-    { name: 'Find Meetings', href: '/meetings', icon: Users },
-    { name: 'Find Events', href: '/events', icon: Calendar },
+    { name: 'Find Meetings', href: '/meetings', icon: Users, badge: 'Soon' },
+    { name: 'Find Events', href: '/events', icon: Calendar, badge: 'Beta' },
     { name: 'Our Mission', href: '/mission', icon: ShieldCheck },
   ];
 
@@ -55,6 +63,7 @@ export default function Navbar() {
                     >
                       <Icon className="w-4 h-4" />
                       {link.name}
+                      {link.badge && <NavBadge label={link.badge} />}
                       <ChevronDown className="w-3 h-3 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
                     </Link>
                     <div className="absolute left-0 pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -97,6 +106,7 @@ export default function Navbar() {
                 >
                   <Icon className="w-4 h-4" />
                   {link.name}
+                  {link.badge && <NavBadge label={link.badge} />}
                 </Link>
               );
             })}
@@ -141,6 +151,7 @@ export default function Navbar() {
                     >
                       <Icon className="w-5 h-5" />
                       {link.name}
+                      {link.badge && <NavBadge label={link.badge} />}
                     </Link>
                     {link.dropdown && (
                       <div className="pl-6 space-y-1">

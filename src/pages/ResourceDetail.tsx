@@ -10,6 +10,18 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 
+function getLastVerifiedLabel(resource: Resource) {
+  const candidate = resource.updated_at || resource.created_at || resource.last_verified;
+  if (!candidate) return 'Verification date unavailable';
+
+  const parsed = new Date(candidate);
+  if (Number.isNaN(parsed.getTime())) {
+    return typeof resource.last_verified === 'string' ? resource.last_verified : 'Verification date unavailable';
+  }
+
+  return format(parsed, 'MMM yyyy');
+}
+
 export default function ResourceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -40,14 +52,10 @@ export default function ResourceDetail() {
 
   const fetchResource = async (resourceId: string) => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('resources')
-        .select('*')
-        .eq('id', resourceId)
-        .single();
-
-      if (error) throw error;
+      try {
+      const response = await fetch(`/api/resources/${resourceId}`);
+      if (!response.ok) throw new Error('Failed to fetch resource');
+      const data = await response.json();
       setResource(data);
     } catch (err) {
       console.error('Error fetching resource:', err);
@@ -187,6 +195,7 @@ export default function ResourceDetail() {
   if (!resource) return null;
 
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(resource.address)}`;
+  const lastVerifiedLabel = getLastVerifiedLabel(resource);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -246,7 +255,7 @@ export default function ResourceDetail() {
                 )}
                 <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded">
                   <ShieldCheck className="w-3 h-3" />
-                  Last Verified: {format(new Date(resource.updated_at || resource.created_at), 'MMM yyyy')}
+                  Last Verified: {lastVerifiedLabel}
                 </div>
               </div>
             </div>

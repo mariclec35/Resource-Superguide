@@ -57,7 +57,7 @@ export default function EventsLandingPage() {
     <div className="min-h-screen bg-zinc-50 pb-20">
       {/* Header */}
       <div className="bg-emerald-900 text-white py-16 px-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/community/1920/1080?blur=4')] opacity-20 bg-cover bg-center mix-blend-overlay"></div>
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.18),_transparent_42%),radial-gradient(circle_at_bottom_right,_rgba(255,255,255,0.12),_transparent_38%)]"></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="max-w-2xl">
@@ -68,6 +68,9 @@ export default function EventsLandingPage() {
               <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4">Recovery Community Events</h1>
               <p className="text-emerald-100 text-lg leading-relaxed">
                 Discover recovery-related community events including sober social gatherings, workshops, trainings, volunteer opportunities, fundraisers, and awareness events.
+              </p>
+              <p className="mt-4 text-sm font-medium text-emerald-200">
+                Events are in beta right now, so the calendar may be sparse while submissions start coming in.
               </p>
             </div>
             <div className="flex-shrink-0">
@@ -153,14 +156,39 @@ export default function EventsLandingPage() {
             <div className="w-16 h-16 bg-zinc-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <CalendarIcon className="w-8 h-8 text-zinc-400" />
             </div>
-            <h3 className="text-xl font-bold text-zinc-900 mb-2">No events found</h3>
-            <p className="text-zinc-500 mb-6">We couldn't find any events matching your current filters. Try adjusting your search or clearing filters to see more.</p>
-            <button 
-              onClick={() => { setSearchQuery(''); setSelectedCategory(''); setSelectedCity(''); setIsFree(false); }}
-              className="px-6 py-2 bg-zinc-900 text-white font-medium rounded-xl hover:bg-zinc-800 transition-colors"
-            >
-              Clear Filters
-            </button>
+            <h3 className="text-xl font-bold text-zinc-900 mb-2">
+              {events.length === 0 ? 'No events published yet' : 'No events match these filters'}
+            </h3>
+            <p className="text-zinc-500 mb-6">
+              {events.length === 0
+                ? 'This part of the hub is still getting started. You can submit the first event or keep using resource search in the meantime.'
+                : 'Try adjusting your search or clearing filters to see more.'}
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              {events.length === 0 ? (
+                <>
+                  <Link
+                    to="/events/submit"
+                    className="px-6 py-2 bg-zinc-900 text-white font-medium rounded-xl hover:bg-zinc-800 transition-colors"
+                  >
+                    Submit an Event
+                  </Link>
+                  <Link
+                    to="/"
+                    className="px-6 py-2 bg-white border border-zinc-200 text-zinc-700 font-medium rounded-xl hover:bg-zinc-50 transition-colors"
+                  >
+                    Browse Resources
+                  </Link>
+                </>
+              ) : (
+                <button 
+                  onClick={() => { setSearchQuery(''); setSelectedCategory(''); setSelectedCity(''); setIsFree(false); }}
+                  className="px-6 py-2 bg-zinc-900 text-white font-medium rounded-xl hover:bg-zinc-800 transition-colors"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
           </div>
         ) : viewMode === 'list' ? (
           <div className="space-y-4">
@@ -180,17 +208,15 @@ export default function EventsLandingPage() {
           />
         )}
 
-        {/* Developer Note / Coming Soon */}
+        {/* Beta Roadmap */}
         <div className="mt-16 p-6 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-4">
           <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700 shrink-0">
             <Filter className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-bold text-emerald-900 mb-1">More event features coming soon</h4>
+            <h4 className="font-bold text-emerald-900 mb-1">What we&apos;re adding next</h4>
             <p className="text-emerald-800 text-sm leading-relaxed">
-              We're working on adding event subscriptions, organizer profiles, and unified discovery. 
-              <br/><br/>
-              <span className="opacity-70 italic">Developer Note: This events system is intentionally separate from the upcoming meeting locator. While they may share UI patterns, meetings (AA/NA/SMART) require different data models and search flows than community events. They will be connected in a unified discovery layer later.</span>
+              We&apos;re working on event subscriptions, organizer profiles, and a stronger bridge between events and resource discovery so people can move between them more naturally.
             </p>
           </div>
         </div>
