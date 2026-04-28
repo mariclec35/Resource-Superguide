@@ -5,7 +5,6 @@ import { Search, Loader2, Sparkles, ArrowRight, Info, LayoutGrid, MapPin, Moon, 
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import BrandLogo from '../components/BrandLogo';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -305,18 +304,6 @@ export default function Home() {
           <p className="text-lg md:text-xl text-zinc-600 mb-8">
             {homepageSettings?.secondaryHeader || "Whether you know exactly what you're looking for or just need to describe your situation, we're here to help."}
           </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.15 }}
-          className="flex justify-center mb-8 md:mb-10"
-        >
-          <BrandLogo
-            variant="compact"
-            imageClassName="w-full max-w-[520px] object-contain"
-          />
         </motion.div>
 
         {/* Quick Actions */}

@@ -35,16 +35,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center gap-2.5 group">
+            <Link to="/" className="flex items-center group">
               <BrandLogo
-                variant="mark"
+                variant="navbar"
                 className="shrink-0"
-                imageClassName="w-10 h-10 object-contain drop-shadow-sm transition-transform group-hover:scale-[1.03]"
+                imageClassName="h-11 w-auto max-w-[260px] object-contain drop-shadow-sm transition-transform group-hover:scale-[1.02]"
               />
-              <div className="leading-tight">
-                <div className="text-lg font-black tracking-tight text-zinc-900">Recovery Hub</div>
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Twin Cities</div>
-              </div>
             </Link>
           </div>
 
