@@ -39,7 +39,7 @@ export default function Navbar() {
               <BrandLogo
                 variant="navbar"
                 className="shrink-0"
-                imageClassName="h-11 w-auto max-w-[260px] object-contain drop-shadow-sm transition-transform group-hover:scale-[1.02]"
+                imageClassName="h-9 sm:h-10 w-auto max-w-[240px] object-contain drop-shadow-sm transition-transform group-hover:scale-[1.02]"
               />
             </Link>
           </div>

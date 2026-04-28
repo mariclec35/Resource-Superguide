@@ -3,7 +3,7 @@ import logoMark from '../assets/branding/logo-mark.png';
 import logoCompact from '../assets/branding/logo-compact.png';
 import logoLockup from '../assets/branding/logo-lockup.png';
 import logoBadge from '../assets/branding/logo-badge.png';
-import logoNavbarUpperLeft from '../assets/branding/logo-navbar-upper-left.png';
+import logoNavbarCropped from '../assets/branding/logo-navbar-cropped.png';
 
 type BrandLogoVariant = 'mark' | 'compact' | 'lockup' | 'badge' | 'navbar';
 
@@ -12,7 +12,7 @@ const sources: Record<BrandLogoVariant, string> = {
   compact: logoCompact,
   lockup: logoLockup,
   badge: logoBadge,
-  navbar: logoNavbarUpperLeft,
+  navbar: logoNavbarCropped,
 };
 
 const alts: Record<BrandLogoVariant, string> = {
