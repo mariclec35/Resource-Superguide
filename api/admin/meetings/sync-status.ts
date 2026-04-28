@@ -14,13 +14,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { count: totalMeetings, error: totalError },
       { count: linkedMeetings, error: linkedError },
       { data: latestMeeting, error: latestError },
-      { data: sourceCounts, error: sourceError },
       { data: recentErrors, error: recentErrorsError },
     ] = await Promise.all([
       supabase.from("meetings").select("*", { count: "exact", head: true }),
       supabase.from("meetings").select("*", { count: "exact", head: true }).not("parent_org_slug", "is", null),
       supabase.from("meetings").select("last_sync").order("last_sync", { ascending: false }).limit(1).maybeSingle(),
-      supabase.from("meetings").select("source_server"),
       supabase
         .from("error_events")
         .select("created_at, message, metadata")
@@ -33,14 +31,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (totalError) throw totalError;
     if (linkedError) throw linkedError;
     if (latestError) throw latestError;
-    if (sourceError) throw sourceError;
     if (recentErrorsError) throw recentErrorsError;
 
-    const countsBySource = new Map<string, number>();
-    for (const row of sourceCounts || []) {
-      const key = (row as { source_server?: string }).source_server || "unknown";
-      countsBySource.set(key, (countsBySource.get(key) || 0) + 1);
-    }
+    const sourceCountResults = await Promise.all(
+      sources.map(async (source) => {
+        const { count, error } = await supabase
+          .from("meetings")
+          .select("*", { count: "exact", head: true })
+          .eq("source_server", source.id);
+
+        if (error) {
+          throw error;
+        }
+
+        return [source.id, count || 0] as const;
+      })
+    );
+
+    const countsBySource = new Map<string, number>(sourceCountResults);
 
     const latestErrorsBySource = new Map<string, { message: string; created_at: string | null }>();
     for (const row of recentErrors || []) {

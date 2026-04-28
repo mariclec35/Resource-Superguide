@@ -35,6 +35,7 @@ import DataImporter from '../components/DataImporter';
 import AdminAI from '../components/AdminAI';
 import AdminEventsManager from '../components/AdminEventsManager';
 import AdminMeetingsManager from '../components/AdminMeetingsManager';
+import BrandLogo from '../components/BrandLogo';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -100,10 +101,14 @@ export default function AdminDashboard() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-3">
-                <div className="bg-emerald-600 w-8 h-8 rounded flex items-center justify-center shadow-sm">
-                  <span className="text-white font-black text-xs tracking-tighter italic">TC</span>
+                <BrandLogo
+                  variant="mark"
+                  imageClassName="w-11 h-11 object-contain"
+                />
+                <div>
+                  <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Recovery Hub</h1>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Twin Cities</p>
                 </div>
-                <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Recovery Hub</h1>
                 <div className="h-6 w-px bg-zinc-200" />
                 <span className="text-zinc-500 font-bold text-sm uppercase tracking-widest">Operations Console</span>
                 <span className="px-2 py-0.5 bg-zinc-100 text-zinc-400 text-[10px] font-bold rounded uppercase tracking-widest">v1.2</span>

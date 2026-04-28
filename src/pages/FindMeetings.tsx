@@ -16,6 +16,7 @@ const DAY_OPTIONS = [
 
 const FORMAT_OPTIONS = ['Open', 'Closed', 'Women', 'Men', 'Spanish', 'Virtual', 'Beginners'];
 const SUBTYPE_OPTIONS = ['', 'AA', 'NA', 'SMART', 'CMA', 'CA', 'All-Recovery'];
+const PAGE_SIZE = 24;
 
 function formatMeetingTime(time: string) {
   const [hours, minutes] = time.split(':').map(Number);
@@ -37,6 +38,7 @@ export default function FindMeetings() {
   const [timeFrom, setTimeFrom] = useState('');
   const [selectedSubtype, setSelectedSubtype] = useState('');
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     document.title = 'Find Meetings | Twin Cities Recovery Hub';
@@ -52,6 +54,7 @@ export default function FindMeetings() {
   }), [searchText, selectedDay, timeFrom, selectedSubtype, selectedFormats]);
 
   const { meetings, isLoading, isValidating, error, refresh } = useMeetings(filters);
+  const visibleMeetings = meetings.slice(0, visibleCount);
 
   const activeFilterCount = [
     filters.searchText,
@@ -75,7 +78,12 @@ export default function FindMeetings() {
     setTimeFrom('');
     setSelectedSubtype('');
     setSelectedFormats([]);
+    setVisibleCount(PAGE_SIZE);
   };
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchText, selectedDay, timeFrom, selectedSubtype, selectedFormats]);
 
   const badgeStyles = (subtype: string | null | undefined, pathwayType: string | null | undefined) => {
     if (subtype === 'SMART') {
@@ -227,7 +235,7 @@ export default function FindMeetings() {
             <div>
               <h2 className="text-2xl font-black tracking-tight text-zinc-900">{meetings.length} Meetings Found</h2>
               <p className="text-sm text-zinc-500 mt-1">
-                Search results update when the sync engine writes new records into Supabase.
+                Showing {Math.min(visibleCount, meetings.length)} right now so the page stays easier to scan.
               </p>
             </div>
           </div>
@@ -257,8 +265,9 @@ export default function FindMeetings() {
           )}
 
           {!error && !isLoading && meetings.length > 0 && (
+            <>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {meetings.map((meeting) => {
+              {visibleMeetings.map((meeting) => {
                 const formats = Array.isArray(meeting.details?.formats) ? meeting.details.formats : [];
                 const mapsQuery = meeting.address || meeting.location_name || meeting.meeting_name;
                 const pathwayType = meeting.details?.pathway_type || null;
@@ -372,6 +381,18 @@ export default function FindMeetings() {
                 );
               })}
             </div>
+            {visibleCount < meetings.length && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
+                  className="inline-flex items-center gap-2 h-11 px-5 rounded-xl border border-zinc-200 bg-white text-sm font-semibold text-zinc-700 hover:border-zinc-300"
+                >
+                  Show {Math.min(PAGE_SIZE, meetings.length - visibleCount)} More
+                </button>
+              </div>
+            )}
+            </>
           )}
         </section>
       </div>

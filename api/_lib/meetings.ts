@@ -51,28 +51,12 @@ export const meetingSources: TsmlSourceConfig[] = [
     format: "json",
   },
   {
-    id: "st-paul-intergroup",
-    name: "St. Paul Intergroup",
-    url: "https://aastpaul.org/meetings/?format=json",
-    fellowship: "AA",
-    subtype: "AA",
-    format: "json",
-  },
-  {
     id: "na-minnesota-region",
     name: "NA Minnesota Region",
     url: "https://bmlt.naminnesota.org/main_server/client_interface/json/?switcher=GetSearchResults",
     fellowship: "NA",
     subtype: "NA",
     parser: "bmlt",
-    format: "json",
-  },
-  {
-    id: "greater-mn-area-36",
-    name: "Greater MN (Duluth/Rochester)",
-    url: "https://area36.org/wp-json/tsml/v1/meetings",
-    fellowship: "AA",
-    subtype: "AA",
     format: "json",
   },
 ];

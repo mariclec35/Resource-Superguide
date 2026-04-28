@@ -25,45 +25,59 @@ const DEFAULT_SELECT = [
 ].join(", ");
 
 async function fetchMeetings(filters: MeetingFilters): Promise<Meeting[]> {
-  let query = supabase
-    .from("meetings")
-    .select(DEFAULT_SELECT)
-    .order("day", { ascending: true })
-    .order("time", { ascending: true })
-    .order("meeting_name", { ascending: true });
+  const pageSize = 1000;
+  const rows: Meeting[] = [];
 
-  if (typeof filters.day === "number") {
-    query = query.eq("day", filters.day);
+  for (let start = 0; ; start += pageSize) {
+    let query = supabase
+      .from("meetings")
+      .select(DEFAULT_SELECT)
+      .order("day", { ascending: true })
+      .order("time", { ascending: true })
+      .order("meeting_name", { ascending: true })
+      .range(start, start + pageSize - 1);
+
+    if (typeof filters.day === "number") {
+      query = query.eq("day", filters.day);
+    }
+
+    if (filters.timeFrom) {
+      query = query.gte("time", filters.timeFrom);
+    }
+
+    if (filters.timeTo) {
+      query = query.lte("time", filters.timeTo);
+    }
+
+    if (filters.parentOrgSlug) {
+      query = query.eq("parent_org_slug", filters.parentOrgSlug);
+    }
+
+    if (filters.subtype) {
+      query = query.eq("subtype", filters.subtype);
+    }
+
+    if (filters.searchText?.trim()) {
+      const term = filters.searchText.trim();
+      query = query.or(`meeting_name.ilike.%${term}%,location_name.ilike.%${term}%,address.ilike.%${term}%`);
+    }
+
+    if (filters.formats?.length) {
+      query = query.contains("details", { formats: filters.formats });
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const batch = ((data || []) as unknown) as Meeting[];
+    rows.push(...batch);
+
+    if (batch.length < pageSize) {
+      break;
+    }
   }
 
-  if (filters.timeFrom) {
-    query = query.gte("time", filters.timeFrom);
-  }
-
-  if (filters.timeTo) {
-    query = query.lte("time", filters.timeTo);
-  }
-
-  if (filters.parentOrgSlug) {
-    query = query.eq("parent_org_slug", filters.parentOrgSlug);
-  }
-
-  if (filters.subtype) {
-    query = query.eq("subtype", filters.subtype);
-  }
-
-  if (filters.searchText?.trim()) {
-    const term = filters.searchText.trim();
-    query = query.or(`meeting_name.ilike.%${term}%,location_name.ilike.%${term}%,address.ilike.%${term}%`);
-  }
-
-  if (filters.formats?.length) {
-    query = query.contains("details", { formats: filters.formats });
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return ((data || []) as unknown) as Meeting[];
+  return rows;
 }
 
 export function useMeetings(filters: MeetingFilters = {}) {

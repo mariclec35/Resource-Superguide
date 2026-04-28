@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ShieldCheck, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
+import BrandLogo from '../components/BrandLogo';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -38,8 +39,13 @@ export default function AdminLogin() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-900 text-white mb-6 shadow-xl">
-            <ShieldCheck className="w-8 h-8" />
+          <BrandLogo
+            variant="compact"
+            className="flex justify-center mb-6"
+            imageClassName="w-full max-w-[320px] object-contain"
+          />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-zinc-900 text-white mb-5 shadow-xl">
+            <ShieldCheck className="w-6 h-6" />
           </div>
           <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Admin Portal</h1>
           <p className="text-zinc-500 mt-2">Sign in to manage resources and reports</p>

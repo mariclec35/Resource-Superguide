@@ -13,6 +13,7 @@ import EventDetailPage from './pages/EventDetailPage';
 import SubmitEventPage from './pages/SubmitEventPage';
 import Mission from './pages/Mission';
 import FindMeetings from './pages/FindMeetings';
+import BrandLogo from './components/BrandLogo';
 
 export default function App() {
   return (
@@ -38,11 +39,11 @@ export default function App() {
         
         <footer className="bg-white border-t border-zinc-200 py-12 px-4">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="bg-emerald-600 w-6 h-6 rounded flex items-center justify-center shadow-sm">
-                <span className="text-white font-black text-[10px] tracking-tighter italic">MN</span>
-              </div>
-              <span className="font-bold tracking-tight text-zinc-900">Recovery Hub</span>
+            <div className="flex items-center">
+              <BrandLogo
+                variant="compact"
+                imageClassName="h-16 w-auto object-contain"
+              />
             </div>
             <p className="text-zinc-400 text-sm">
               &copy; {new Date().getFullYear()} MN Recovery Hub. Supporting Minnesota recovery communities.

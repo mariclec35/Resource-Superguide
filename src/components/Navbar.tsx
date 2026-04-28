@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MapPin, BookOpen, ShieldCheck, Menu, X, Calendar, Users, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import BrandLogo from './BrandLogo';
 
 function NavBadge({ label }: { label: string }) {
   return (
@@ -35,12 +36,15 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="bg-emerald-600 w-9 h-9 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-emerald-700 transition-colors border border-emerald-500/20">
-                <span className="text-white font-black text-base tracking-tighter leading-none select-none italic">MN</span>
+              <BrandLogo
+                variant="mark"
+                className="shrink-0"
+                imageClassName="w-10 h-10 object-contain drop-shadow-sm transition-transform group-hover:scale-[1.03]"
+              />
+              <div className="leading-tight">
+                <div className="text-lg font-black tracking-tight text-zinc-900">Recovery Hub</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Twin Cities</div>
               </div>
-              <span className="text-lg font-black tracking-tight text-zinc-900">
-                Recovery Hub
-              </span>
             </Link>
           </div>
 
