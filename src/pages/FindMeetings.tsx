@@ -16,7 +16,7 @@ const DAY_OPTIONS = [
 ];
 
 const FORMAT_OPTIONS = ['Open', 'Closed', 'Women', 'Men', 'Spanish', 'Virtual', 'Beginners'];
-const SUBTYPE_OPTIONS = ['', 'AA', 'NA', 'SMART', 'CMA', 'CA', 'All-Recovery'];
+const SUBTYPE_OPTIONS = ['', 'AA', 'NA'];
 const PAGE_SIZE = 24;
 
 function formatMeetingTime(time: string) {
@@ -83,9 +83,6 @@ export default function FindMeetings() {
     formats: selectedFormats.length ? selectedFormats : undefined,
   }), [searchText, selectedDay, timeFrom, selectedSubtype, selectedFormats]);
 
-  const { meetings, isLoading, isValidating, error, refresh } = useMeetings(filters);
-  const visibleMeetings = meetings.slice(0, visibleCount);
-
   const activeFilterCount = [
     filters.searchText,
     typeof filters.day === 'number' ? 'day' : undefined,
@@ -93,6 +90,10 @@ export default function FindMeetings() {
     filters.subtype,
     filters.formats?.length ? 'formats' : undefined,
   ].filter(Boolean).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
+  const { meetings, isLoading, isValidating, error, refresh } = useMeetings(filters, hasActiveFilters);
+  const visibleMeetings = meetings.slice(0, visibleCount);
 
   const toggleFormat = (format: string) => {
     setSelectedFormats((current) =>
@@ -149,7 +150,7 @@ export default function FindMeetings() {
               <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-200 mb-3">Meetings</p>
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-3">Find recovery meetings across Minnesota</h1>
               <p className="text-emerald-100 text-base sm:text-lg max-w-2xl">
-                Search synced meeting lists by day, time, and format. Results update automatically when the meeting sync job refreshes records.
+                Search synced AA and NA meeting lists by day, time, and format. Results update automatically when the meeting sync job refreshes records.
               </p>
             </div>
           </div>
@@ -236,7 +237,7 @@ export default function FindMeetings() {
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-5">
               <div className="text-sm text-zinc-500">
-                {activeFilterCount > 0 ? `${activeFilterCount} active filters` : 'Live sync enabled'}
+                {activeFilterCount > 0 ? `${activeFilterCount} active filters` : 'Add a search term or filter to begin'}
                 {isValidating && !isLoading ? ' • refreshing' : ''}
               </div>
               <div className="flex items-center gap-2">
@@ -287,10 +288,21 @@ export default function FindMeetings() {
 
           {!error && !isLoading && meetings.length === 0 && (
             <div className="bg-white border border-zinc-200 rounded-2xl p-8 text-center">
-              <h3 className="text-lg font-bold text-zinc-900 mb-2">No meetings match those filters yet</h3>
-              <p className="text-sm text-zinc-500 max-w-xl mx-auto leading-6">
-                Try a broader search or clear some filters. If you just configured meeting sync, this page will fill in after the first cron run finishes.
-              </p>
+              {hasActiveFilters ? (
+                <>
+                  <h3 className="text-lg font-bold text-zinc-900 mb-2">No meetings match those filters yet</h3>
+                  <p className="text-sm text-zinc-500 max-w-xl mx-auto leading-6">
+                    Try a broader search or clear some filters. If you just configured meeting sync, this page will fill in after the first cron run finishes.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-bold text-zinc-900 mb-2">Start with a search or filter</h3>
+                  <p className="text-sm text-zinc-500 max-w-xl mx-auto leading-6">
+                    Use the search field, pick a day, or choose a format to load matching meetings.
+                  </p>
+                </>
+              )}
             </div>
           )}
 

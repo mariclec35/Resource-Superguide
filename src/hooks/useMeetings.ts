@@ -80,14 +80,16 @@ async function fetchMeetings(filters: MeetingFilters): Promise<Meeting[]> {
   return rows;
 }
 
-export function useMeetings(filters: MeetingFilters = {}) {
+export function useMeetings(filters: MeetingFilters = {}, enabled = true) {
   const key = useMemo(() => ["meetings", JSON.stringify(filters)], [filters]);
-  const swr = useSWR(key, () => fetchMeetings(filters), {
+  const swr = useSWR(enabled ? key : null, () => fetchMeetings(filters), {
     revalidateOnFocus: false,
     dedupingInterval: 30_000,
   });
 
   useEffect(() => {
+    if (!enabled) return;
+
     const channelName = `meetings-realtime-${JSON.stringify(filters)}`;
     const channel = supabase
       .channel(channelName)
@@ -103,14 +105,14 @@ export function useMeetings(filters: MeetingFilters = {}) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [filters, swr]);
+  }, [enabled, filters, swr]);
 
-  const meetings = swr.data || [];
+  const meetings = enabled ? swr.data || [] : [];
 
   return {
     meetings,
-    isLoading: swr.isLoading,
-    isValidating: swr.isValidating,
+    isLoading: enabled ? swr.isLoading : false,
+    isValidating: enabled ? swr.isValidating : false,
     error: swr.error,
     refresh: () => swr.mutate(),
   };

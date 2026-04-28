@@ -1160,6 +1160,38 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
+// Public: Get homepage stats
+app.get("/api/homepage-stats", async (_req, res) => {
+  try {
+    const [resourcesResult, meetingsResult, eventsResult] = await Promise.all([
+      supabase
+        .from("resources")
+        .select("*", { count: "exact", head: true })
+        .neq("status", "temporarily_closed"),
+      supabase
+        .from("meetings")
+        .select("*", { count: "exact", head: true }),
+      supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "published"),
+    ]);
+
+    if (resourcesResult.error) throw resourcesResult.error;
+    if (meetingsResult.error) throw meetingsResult.error;
+    if (eventsResult.error) throw eventsResult.error;
+
+    res.status(200).json({
+      resources: resourcesResult.count || 0,
+      meetings: meetingsResult.count || 0,
+      events: eventsResult.count || 0,
+    });
+  } catch (err: any) {
+    console.error("Failed to fetch homepage stats:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // API: Get Homepage Settings
 app.get("/api/homepage-settings", async (req, res) => {
   try {

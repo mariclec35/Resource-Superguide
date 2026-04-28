@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Resource, Category, HomepageSettings } from '../types';
 import ResourceCard from '../components/ResourceCard';
+import StatRibbon from '../components/StatRibbon';
 import { Search, Loader2, Sparkles, ArrowRight, Info, LayoutGrid, MapPin, Moon, Users, Utensils, Briefcase, Car, Heart, Shield, Home as HomeIcon, Phone, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -65,10 +66,21 @@ function getResourceSearchFields(resource: Resource) {
     .toLowerCase();
 }
 
+type HomepageStats = {
+  resources: number;
+  meetings: number;
+  events: number;
+};
+
 export default function Home() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [dbCategories, setDbCategories] = useState<Category[]>([]);
   const [homepageSettings, setHomepageSettings] = useState<HomepageSettings | null>(null);
+  const [homepageStats, setHomepageStats] = useState<HomepageStats>({
+    resources: 0,
+    meetings: 0,
+    events: 0,
+  });
   const [loading, setLoading] = useState(true);
   
   // Search State
@@ -102,6 +114,16 @@ export default function Home() {
       if (!resourceResponse.ok) throw new Error('Failed to fetch resources');
       const resData = await resourceResponse.json();
       setResources((resData || []).map(normalizeResource));
+
+      // 1b. Fetch Homepage Stats
+      fetch('/api/homepage-stats')
+        .then(res => res.json())
+        .then(data => setHomepageStats({
+          resources: Number(data.resources) || 0,
+          meetings: Number(data.meetings) || 0,
+          events: Number(data.events) || 0,
+        }))
+        .catch(err => console.error('Error fetching homepage stats:', err));
       
       // 2. Fetch Homepage Settings
       fetch('/api/homepage-settings')
@@ -278,6 +300,8 @@ export default function Home() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <StatRibbon stats={homepageStats} />
+
       {/* Hero Section */}
       <div className="mb-12 text-center max-w-3xl mx-auto">
         <motion.div
