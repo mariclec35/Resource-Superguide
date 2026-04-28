@@ -97,6 +97,25 @@ export default function Home() {
   const [browseCategory, setBrowseCategory] = useState<string>('');
   const [browseLocation, setBrowseLocation] = useState<string>('');
   const [sortBy, setSortBy] = useState('relevance');
+
+  const fetchHomepageStats = async () => {
+    try {
+      const response = await fetch('/api/homepage-stats');
+      if (!response.ok) {
+        throw new Error('Failed to fetch homepage stats');
+      }
+
+      const data = await response.json();
+      setHomepageStats({
+        resources: Number(data.resources) || 0,
+        meetings: Number(data.meetings) || 0,
+        events: Number(data.events) || 0,
+      });
+    } catch (err) {
+      console.error('Error fetching homepage stats:', err);
+    }
+  };
+
   useEffect(() => {
     document.title = "MN Recovery Hub";
     fetchData();
@@ -104,6 +123,14 @@ export default function Home() {
     if (!localStorage.getItem('session_id')) {
       localStorage.setItem('session_id', Math.random().toString(36).substring(2, 15));
     }
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void fetchHomepageStats();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
   }, []);
 
   const fetchData = async () => {
@@ -116,14 +143,7 @@ export default function Home() {
       setResources((resData || []).map(normalizeResource));
 
       // 1b. Fetch Homepage Stats
-      fetch('/api/homepage-stats')
-        .then(res => res.json())
-        .then(data => setHomepageStats({
-          resources: Number(data.resources) || 0,
-          meetings: Number(data.meetings) || 0,
-          events: Number(data.events) || 0,
-        }))
-        .catch(err => console.error('Error fetching homepage stats:', err));
+      await fetchHomepageStats();
       
       // 2. Fetch Homepage Settings
       fetch('/api/homepage-settings')
