@@ -60,12 +60,14 @@ export interface Resource {
   // New platform fields
   org_slug?: string;
   name_aliases?: string[];
+  search_keywords?: string[];
   search_embeddings_text?: string;
   metadata?: {
     is_assessment_center: boolean;
     pathway_tags: string[];
     referral_required: string;
     last_verified: string;
+    search_keywords?: string[];
     logo_url?: string | null;
     logo?: string | null;
   };

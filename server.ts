@@ -50,9 +50,11 @@ type SearchResource = {
   status?: string;
   org_slug?: string;
   name_aliases?: string[];
+  search_keywords?: string[];
   search_embeddings_text?: string;
   metadata?: {
     pathway_tags?: string[];
+    search_keywords?: string[];
     referral_required?: string;
     [key: string]: unknown;
   };
@@ -177,6 +179,7 @@ function normalizeSearchResource(resource: SearchResource) {
 
 function getSearchFields(resource: ReturnType<typeof normalizeSearchResource>) {
   const aliases = resource.name_aliases || [];
+  const keywords = resource.search_keywords || resource.metadata?.search_keywords || [];
   const pathTags = resource.metadata?.pathway_tags || [];
   const populations = resource.eligibility?.populations || [];
   const childPrograms = resource.relational_graph?.child_programs || [];
@@ -203,6 +206,7 @@ function getSearchFields(resource: ReturnType<typeof normalizeSearchResource>) {
     resource.search_embeddings_text,
     resource.metadata?.referral_required,
     ...aliases,
+    ...keywords,
     ...pathTags,
     ...populations,
     ...childPrograms,
