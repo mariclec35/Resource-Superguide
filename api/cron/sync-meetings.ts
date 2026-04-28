@@ -47,21 +47,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       let removed = 0;
-      if (meetingIds.length) {
-        const { data: removedRows, error: deleteError } = await supabase
-          .from("meetings")
-          .delete()
-          .eq("source_server", source.id)
-          .not("meeting_id", "in", `(${meetingIds.map((id) => `"${id}"`).join(",")})`)
-          .select("meeting_id");
+      const { data: existingRows, error: existingError } = await supabase
+        .from("meetings")
+        .select("meeting_id")
+        .eq("source_server", source.id);
 
-        if (deleteError) throw deleteError;
-        removed = removedRows?.length ?? 0;
-      } else {
+      if (existingError) throw existingError;
+
+      const existingIds = (existingRows || []).map((row) => row.meeting_id as string);
+      const staleIds = meetingIds.length
+        ? existingIds.filter((id) => !meetingIds.includes(id))
+        : existingIds;
+
+      if (staleIds.length) {
         const { data: removedRows, error: deleteError } = await supabase
           .from("meetings")
           .delete()
-          .eq("source_server", source.id)
+          .in("meeting_id", staleIds)
           .select("meeting_id");
 
         if (deleteError) throw deleteError;
