@@ -9,7 +9,7 @@ export interface TsmlSourceConfig {
   fellowship?: string;
   subtype?: string;
   format?: "json" | "csv";
-  parser?: "tsml" | "smartrecovery";
+  parser?: "tsml" | "smartrecovery" | "bmlt";
   minnesotaOnly?: boolean;
   twinCitiesOnly?: boolean;
   headers?: Record<string, string>;
@@ -61,9 +61,10 @@ export const meetingSources: TsmlSourceConfig[] = [
   {
     id: "na-minnesota-region",
     name: "NA Minnesota Region",
-    url: "https://naminnesota.org/meetings/?format=json",
+    url: "https://bmlt.naminnesota.org/main_server/client_interface/json/?switcher=GetSearchResults",
     fellowship: "NA",
     subtype: "NA",
+    parser: "bmlt",
     format: "json",
   },
   {
@@ -285,6 +286,7 @@ function isWithinBounds(lat: number | null, lng: number | null, bounds: { minLat
 function inferState(raw: RawMeeting): string | null {
   return (
     readString(raw.state)
+    || readString(raw.location_province)
     || readString(raw.province)
     || readString(raw.region)
     || readString((raw.address as Record<string, unknown> | undefined)?.state)
@@ -296,9 +298,23 @@ function isMinnesotaRow(raw: RawMeeting, latitude: number | null, longitude: num
   if (state === "MN" || state === "MINNESOTA") return true;
 
   const city = readString(raw.city)?.toLowerCase() || "";
-  if (city.includes("minneapolis") || city.includes("saint paul") || city.includes("st paul")) return true;
+  const municipality = readString(raw.location_municipality)?.toLowerCase() || "";
+  if (
+    city.includes("minneapolis") || city.includes("saint paul") || city.includes("st paul")
+    || municipality.includes("minneapolis") || municipality.includes("saint paul") || municipality.includes("st paul")
+  ) return true;
 
-  const addressText = sanitizeAddress(raw.address, raw.street, raw.city, raw.state, raw.postal_code ?? raw.zip)?.toLowerCase() || "";
+  const addressText = sanitizeAddress(
+    raw.address,
+    raw.street,
+    raw.city,
+    raw.state,
+    raw.postal_code ?? raw.zip,
+    raw.location_street,
+    raw.location_municipality,
+    raw.location_province,
+    raw.location_postal_code_1
+  )?.toLowerCase() || "";
   if (addressText.includes(", mn") || addressText.includes(" minnesota")) return true;
 
   return isWithinBounds(latitude, longitude, MINNESOTA_BOUNDS);
@@ -399,6 +415,39 @@ async function loadSourcePayload(source: TsmlSourceConfig): Promise<unknown> {
   return response.json();
 }
 
+const bmltFormatsCache = new Map<string, Map<string, string>>();
+
+function deriveBmltBaseUrl(url: string): string | null {
+  const marker = "/client_interface/json/";
+  const index = url.indexOf(marker);
+  if (index === -1) return null;
+  return `${url.slice(0, index + marker.length)}?switcher=`;
+}
+
+async function loadBmltFormatMap(source: TsmlSourceConfig): Promise<Map<string, string>> {
+  const baseUrl = deriveBmltBaseUrl(source.url);
+  if (!baseUrl) return new Map();
+  if (bmltFormatsCache.has(baseUrl)) return bmltFormatsCache.get(baseUrl)!;
+
+  try {
+    const response = await fetch(`${baseUrl}GetFormats`, { headers: source.headers });
+    if (!response.ok) throw new Error(`Failed to fetch BMLT formats for ${source.id}`);
+    const payload = await response.json();
+    const rows = Array.isArray(payload) ? payload : [];
+    const formatMap = new Map<string, string>();
+    for (const row of rows) {
+      if (!row || typeof row !== "object") continue;
+      const key = readString((row as RawMeeting).key_string);
+      const name = readString((row as RawMeeting).name_string);
+      if (key && name) formatMap.set(key, name);
+    }
+    bmltFormatsCache.set(baseUrl, formatMap);
+    return formatMap;
+  } catch {
+    return new Map();
+  }
+}
+
 function extractSmartDescription(raw: RawMeeting): string | null {
   return (
     readString(raw.description)
@@ -432,7 +481,7 @@ export async function loadTsmlSources(): Promise<TsmlSourceConfig[]> {
       const format: TsmlSourceConfig["format"] =
         entry.format === "csv" || entry.format === "json" ? entry.format : undefined;
       const parser: TsmlSourceConfig["parser"] =
-        entry.parser === "smartrecovery" ? "smartrecovery" : "tsml";
+        entry.parser === "smartrecovery" ? "smartrecovery" : entry.parser === "bmlt" ? "bmlt" : "tsml";
 
       return {
         id: String(entry.id || "").trim(),
@@ -544,6 +593,97 @@ function mapTsmlMeeting(
   };
 }
 
+function normalizeBmltDay(value: unknown): number | null {
+  const numeric = readNumber(value);
+  if (numeric === null) return null;
+  if (numeric >= 1 && numeric <= 7) return numeric - 1;
+  if (numeric >= 0 && numeric <= 6) return numeric;
+  return null;
+}
+
+function extractPhoneNumber(value: string | null): string | null {
+  if (!value) return null;
+  const match = value.match(/(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
+  return match ? match[0] : null;
+}
+
+function mapBmltMeeting(
+  source: TsmlSourceConfig,
+  row: RawMeeting,
+  syncTimestamp: string,
+  resourceCandidates: ResourceMatchCandidate[],
+  formatMap: Map<string, string>
+): MeetingSyncRecord | null {
+  const latitude = readNumber(row.latitude);
+  const longitude = readNumber(row.longitude);
+  if (source.minnesotaOnly && !isMinnesotaRow(row, latitude, longitude)) return null;
+  if (source.twinCitiesOnly && !isWithinBounds(latitude, longitude, TWIN_CITIES_BOUNDS)) return null;
+
+  const day = normalizeBmltDay(row.weekday_tinyint);
+  const time = normalizeTime(row.start_time);
+  if (day === null || !time) return null;
+
+  const rawFormats = readString(row.formats)
+    ?.split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean) || [];
+  const formatCodes = rawFormats.map((code) => formatMap.get(code) || code);
+  const meetingName = readString(row.meeting_name) || "Untitled Meeting";
+  const locationName = readString(row.location_text) || readString(row.service_body_name) || null;
+  const municipality = readString(row.location_municipality);
+  const province = readString(row.location_province);
+  const address = sanitizeAddress(
+    row.location_street,
+    municipality,
+    province,
+    row.location_postal_code_1
+  );
+  const comments = readString(row.comments);
+  const contactPhone = readString(row.contact_phone_1)
+    || readString(row.contact_phone_2)
+    || extractPhoneNumber(comments);
+  const contactName = readString(row.contact_name_1) || readString(row.contact_name_2);
+  const contactEmail = readString(row.contact_email_1) || readString(row.contact_email_2) || readString(row.email_contact);
+  const virtualLink = readString(row.virtual_meeting_link);
+  const virtualAdditionalInfo = readString(row.virtual_meeting_additional_info);
+  const subtype = source.subtype || "NA";
+
+  return {
+    meeting_id: `${source.id}:${readString(row.id_bigint) || readString(row.worldid_mixed) || buildMeetingId(source, row)}`,
+    source_id: readString(row.id_bigint) || readString(row.worldid_mixed) || buildMeetingId(source, row),
+    source_server: source.id,
+    parent_org_slug: resolveParentOrgSlug(locationName, resourceCandidates, source.parentOrgSlug),
+    subtype,
+    meeting_name: meetingName,
+    day,
+    time,
+    location_name: locationName,
+    address,
+    latitude,
+    longitude,
+    contact_info: {
+      contact_name: contactName,
+      contact_phone: contactPhone,
+      contact_email: contactEmail,
+      website: virtualLink || readString(row.root_server_uri),
+    },
+    details: {
+      source_name: source.name,
+      fellowship: source.fellowship ?? null,
+      pathway_type: pathwayTypeForSubtype(subtype),
+      formats: formatCodes,
+      virtual: rawFormats.includes("VM") || rawFormats.includes("HY") || Boolean(virtualLink),
+      notes: comments || readString(row.location_info),
+      service_body_name: readString(row.service_body_name),
+      location_info: readString(row.location_info),
+      virtual_meeting_link: virtualLink,
+      virtual_meeting_additional_info: virtualAdditionalInfo,
+      raw: row,
+    },
+    last_sync: syncTimestamp,
+  };
+}
+
 export async function fetchSourceMeetings(
   source: TsmlSourceConfig,
   syncTimestamp: string,
@@ -551,9 +691,14 @@ export async function fetchSourceMeetings(
 ): Promise<MeetingSyncRecord[]> {
   const payload = await loadSourcePayload(source);
   const rows = extractRows(payload);
+  const formatMap = source.parser === "bmlt" ? await loadBmltFormatMap(source) : new Map<string, string>();
 
   return rows
     .filter((row) => !looksExpired(row))
-    .map((row) => mapTsmlMeeting(source, row, syncTimestamp, resourceCandidates))
+    .map((row) => (
+      source.parser === "bmlt"
+        ? mapBmltMeeting(source, row, syncTimestamp, resourceCandidates, formatMap)
+        : mapTsmlMeeting(source, row, syncTimestamp, resourceCandidates)
+    ))
     .filter((row): row is MeetingSyncRecord => !!row);
 }
