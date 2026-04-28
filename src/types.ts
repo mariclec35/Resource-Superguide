@@ -210,3 +210,46 @@ export interface RecoveryEvent {
   published_at: string | null;
   archived_at: string | null;
 }
+
+export interface Meeting {
+  meeting_id: string;
+  source_id: string;
+  source_server: string;
+  parent_org_slug: string | null;
+  subtype: string | null;
+  meeting_name: string;
+  day: number;
+  time: string;
+  location_name: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  contact_info: {
+    contact_name?: string | null;
+    contact_phone?: string | null;
+    contact_email?: string | null;
+    website?: string | null;
+  };
+  details: {
+    fellowship?: string | null;
+    formats?: string[];
+    virtual?: boolean;
+    notes?: string | null;
+    pathway_type?: string | null;
+    tool_based_description?: string | null;
+    raw?: Record<string, unknown>;
+  };
+  last_sync: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MeetingFilters {
+  day?: number;
+  timeFrom?: string;
+  timeTo?: string;
+  formats?: string[];
+  parentOrgSlug?: string;
+  searchText?: string;
+  subtype?: string;
+}

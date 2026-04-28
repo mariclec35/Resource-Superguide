@@ -34,6 +34,7 @@ import { logger } from '../lib/logger';
 import DataImporter from '../components/DataImporter';
 import AdminAI from '../components/AdminAI';
 import AdminEventsManager from '../components/AdminEventsManager';
+import AdminMeetingsManager from '../components/AdminMeetingsManager';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -75,6 +76,7 @@ export default function AdminDashboard() {
     { id: 'overview', label: 'Command Center', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'resources', label: 'Resources', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'categories', label: 'Categories', icon: <Layers className="w-4 h-4" /> },
+    { id: 'meetings', label: 'Meetings', icon: <Users className="w-4 h-4" /> },
     { id: 'events', label: 'Events', icon: <Calendar className="w-4 h-4" /> },
     { id: 'homepage', label: 'Homepage Settings', icon: <LayoutGrid className="w-4 h-4" /> },
     { id: 'feedback', label: 'Feedback Intelligence', icon: <MessageSquare className="w-4 h-4" /> },
@@ -186,6 +188,7 @@ export default function AdminDashboard() {
         {activeTab === 'overview' && <Overview />}
         {activeTab === 'resources' && <ResourcesManager />}
         {activeTab === 'categories' && <CategoriesManager />}
+        {activeTab === 'meetings' && <AdminMeetingsManager />}
         {activeTab === 'feedback' && <FeedbackModeration />}
         {activeTab === 'analytics' && <SearchAnalyticsDashboard />}
         {activeTab === 'reports' && <ReportsQueue />}
