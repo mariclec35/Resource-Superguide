@@ -2,7 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Globe, Mail, Phone, ArrowLeft, Share2, Tag, Building2, ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { RecoveryEvent } from '../types';
+import { RecoveryEvent, SupportListItem } from '../types';
+import AddToSupportListButton from '../components/AddToSupportListButton';
+
+function toSupportListItem(event: RecoveryEvent): SupportListItem {
+  return {
+    id: `event-${event.id}`,
+    sourceId: event.id,
+    type: 'event',
+    title: event.title,
+    description: event.short_description || event.description || undefined,
+    category: event.category,
+    address: event.address || undefined,
+    city: event.city || undefined,
+    region: event.state || undefined,
+    locationName: event.location_name || undefined,
+    phone: event.contact_phone || undefined,
+    email: event.contact_email || undefined,
+    website: event.registration_link || event.website || undefined,
+    date: format(parseISO(event.start_datetime), 'EEEE, MMMM d, yyyy'),
+    startTime: format(parseISO(event.start_datetime), 'h:mm a'),
+    endTime: event.end_datetime ? format(parseISO(event.end_datetime), 'h:mm a') : undefined,
+    format: event.is_virtual ? 'online' : 'in-person',
+    addedAt: new Date().toISOString(),
+  };
+}
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +70,7 @@ export default function EventDetailPage() {
 
   const startDate = parseISO(event.start_datetime);
   const endDate = event.end_datetime ? parseISO(event.end_datetime) : null;
+  const supportListItem = toSupportListItem(event);
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-20">
@@ -197,6 +222,8 @@ export default function EventDetailPage() {
               <Share2 className="w-5 h-5" />
               Share Event
             </button>
+
+            <AddToSupportListButton item={supportListItem} />
           </div>
 
         </div>

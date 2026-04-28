@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Globe, Phone, Info, CheckCircle2, AlertTriangle, ExternalLink, Sparkles, Clock, Navigation } from 'lucide-react';
-import { Resource } from '../types';
+import { Resource, SupportListItem } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import AddToSupportListButton from './AddToSupportListButton';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -12,12 +13,30 @@ function cn(...inputs: ClassValue[]) {
 interface ResourceCardProps {
   key?: React.Key;
   resource: Resource;
-  inGuide?: boolean;
-  onToggleGuide?: (id: string) => void;
 }
 
-export default function ResourceCard({ resource, inGuide, onToggleGuide }: ResourceCardProps) {
+function toSupportListItem(resource: Resource): SupportListItem {
+  return {
+    id: `resource-${resource.id}`,
+    sourceId: resource.id,
+    type: 'resource',
+    title: resource.name,
+    description: resource.provides || resource.details || resource.remarks || undefined,
+    category: resource.category,
+    tags: resource.metadata?.pathway_tags || [],
+    address: resource.address || undefined,
+    city: resource.city || undefined,
+    region: resource.locations?.[0]?.state || undefined,
+    phone: resource.phone || undefined,
+    email: resource.email || undefined,
+    website: resource.website || undefined,
+    addedAt: new Date().toISOString(),
+  };
+}
+
+export default function ResourceCard({ resource }: ResourceCardProps) {
   const matchReasons = (resource as any).matchReasons as string[] | undefined;
+  const supportListItem = toSupportListItem(resource);
 
   return (
     <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col h-full group">
@@ -111,27 +130,8 @@ export default function ResourceCard({ resource, inGuide, onToggleGuide }: Resou
           >
             Details
           </Link>
-          
-          {onToggleGuide && (
-            <button
-              onClick={() => onToggleGuide(resource.id)}
-              className={cn(
-                "text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg transition-all flex items-center gap-1.5",
-                inGuide 
-                  ? "bg-zinc-900 text-white shadow-sm" 
-                  : "bg-white border border-zinc-200 text-zinc-600 hover:border-zinc-900 hover:text-zinc-900"
-              )}
-            >
-              {inGuide ? (
-                <>
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Saved
-                </>
-              ) : (
-                "+ Save"
-              )}
-            </button>
-          )}
+
+          <AddToSupportListButton item={supportListItem} variant="compact" />
         </div>
       </div>
     </div>

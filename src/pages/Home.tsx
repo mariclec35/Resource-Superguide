@@ -85,14 +85,9 @@ export default function Home() {
   const [browseCategory, setBrowseCategory] = useState<string>('');
   const [browseLocation, setBrowseLocation] = useState<string>('');
   const [sortBy, setSortBy] = useState('relevance');
-
-  const [myGuideIds, setMyGuideIds] = useState<string[]>([]);
-
   useEffect(() => {
     document.title = "MN Recovery Hub";
     fetchData();
-    const saved = localStorage.getItem('my-guide');
-    if (saved) setMyGuideIds(JSON.parse(saved));
     
     if (!localStorage.getItem('session_id')) {
       localStorage.setItem('session_id', Math.random().toString(36).substring(2, 15));
@@ -265,14 +260,6 @@ export default function Home() {
     // We don't auto-submit here to let them add location if they want, but we could.
   };
 
-  const toggleGuide = (id: string) => {
-    const newIds = myGuideIds.includes(id)
-      ? myGuideIds.filter(i => i !== id)
-      : [...myGuideIds, id];
-    setMyGuideIds(newIds);
-    localStorage.setItem('my-guide', JSON.stringify(newIds));
-  };
-
   const sortedResources = [...filteredResources].sort((a, b) => {
     if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
     if (sortBy === 'recent') return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
@@ -306,6 +293,17 @@ export default function Home() {
           </p>
         </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.16 }}
+          className="mb-6 max-w-2xl mx-auto"
+        >
+          <p className="text-sm md:text-base text-zinc-500 leading-7">
+            Save meetings, events, and resources to a shared support list while you browse, then print, share, or download it when you&apos;re ready.
+          </p>
+        </motion.div>
+
         {/* Quick Actions */}
         <motion.div 
           initial={{ opacity: 0 }}
@@ -335,128 +333,129 @@ export default function Home() {
             );
           })}
         </motion.div>
-
-        {/* Search Module */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-3xl shadow-xl border border-zinc-200 overflow-hidden text-left"
-        >
-          <div className="flex border-b border-zinc-100">
-            <button 
-              onClick={() => setSearchMode('ai')}
-              className={`flex-1 py-4 text-sm md:text-base font-bold flex items-center justify-center gap-2 transition-colors ${searchMode === 'ai' ? 'text-emerald-700 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'}`}
-            >
-              <Sparkles className="w-4 h-4" />
-              What are you looking for?
-            </button>
-            <button 
-              onClick={() => setSearchMode('browse')}
-              className={`flex-1 py-4 text-sm md:text-base font-bold flex items-center justify-center gap-2 transition-colors ${searchMode === 'browse' ? 'text-emerald-700 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'}`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Browse by Category
-            </button>
-          </div>
-          
-          <div className="p-6 md:p-8">
-            {searchMode === 'ai' ? (
-              <form onSubmit={handleAISearch}>
-                <textarea
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="Example: I need sober housing in Saint Paul, and I'm looking for work..."
-                  className="w-full px-5 py-4 text-lg text-zinc-900 placeholder-zinc-400 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none min-h-[120px] transition-all"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleAISearch();
-                    }
-                  }}
-                />
-                <div className="flex flex-col sm:flex-row justify-end items-center mt-6 gap-4">
-                  <button
-                    type="submit"
-                    disabled={isSearching || !aiPrompt.trim()}
-                    className="w-full sm:w-auto bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-zinc-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
-                  >
-                    {isSearching ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Searching...
-                      </>
-                    ) : (
-                      <>
-                        Find Resources
-                        <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleBrowseSearch}>
-                <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">Primary Category</label>
-                {dbCategories.length === 0 ? (
-                  <div className="p-6 bg-zinc-50 border border-zinc-200 rounded-2xl text-center mb-6">
-                    <p className="text-zinc-500 font-medium">Categories coming soon</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-6">
-                    {dbCategories.map(c => (
-                      <button 
-                        key={c.id}
-                        type="button" 
-                        onClick={() => setBrowseCategory(browseCategory === c.name ? '' : c.name)} 
-                        className={`p-3 rounded-xl border text-sm font-bold text-left transition-all ${browseCategory === c.name ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'}`}
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
-                  <div className="flex-1">
-                    <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">Location (Optional)</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                      <input 
-                        type="text" 
-                        value={browseLocation} 
-                        onChange={e => setBrowseLocation(e.target.value)} 
-                        placeholder="City, neighborhood, or ZIP" 
-                        className="w-full pl-10 pr-4 py-3.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-zinc-900 font-medium" 
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end pt-2 border-t border-zinc-100">
-                  <button
-                    type="submit"
-                    disabled={isSearching}
-                    className="w-full sm:w-auto bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-zinc-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
-                  >
-                    {isSearching ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Searching...
-                      </>
-                    ) : (
-                      <>
-                        Search Resources
-                        <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </motion.div>
       </div>
+
+      {/* Search Module */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        id="search-module"
+        className="bg-white rounded-3xl shadow-xl border border-zinc-200 overflow-hidden text-left mb-12"
+      >
+        <div className="flex border-b border-zinc-100">
+          <button 
+            onClick={() => setSearchMode('ai')}
+            className={`flex-1 py-4 text-sm md:text-base font-bold flex items-center justify-center gap-2 transition-colors ${searchMode === 'ai' ? 'text-emerald-700 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'}`}
+          >
+            <Sparkles className="w-4 h-4" />
+            What are you looking for?
+          </button>
+          <button 
+            onClick={() => setSearchMode('browse')}
+            className={`flex-1 py-4 text-sm md:text-base font-bold flex items-center justify-center gap-2 transition-colors ${searchMode === 'browse' ? 'text-emerald-700 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'}`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Browse by Category
+          </button>
+        </div>
+        
+        <div className="p-6 md:p-8">
+          {searchMode === 'ai' ? (
+            <form onSubmit={handleAISearch}>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Example: I need sober housing in Saint Paul, and I'm looking for work..."
+                className="w-full px-5 py-4 text-lg text-zinc-900 placeholder-zinc-400 bg-zinc-50 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none min-h-[120px] transition-all"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAISearch();
+                  }
+                }}
+              />
+              <div className="flex flex-col sm:flex-row justify-end items-center mt-6 gap-4">
+                <button
+                  type="submit"
+                  disabled={isSearching || !aiPrompt.trim()}
+                  className="w-full sm:w-auto bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-zinc-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      Find Resources
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleBrowseSearch}>
+              <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">Primary Category</label>
+              {dbCategories.length === 0 ? (
+                <div className="p-6 bg-zinc-50 border border-zinc-200 rounded-2xl text-center mb-6">
+                  <p className="text-zinc-500 font-medium">Categories coming soon</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-6">
+                  {dbCategories.map(c => (
+                    <button 
+                      key={c.id}
+                      type="button" 
+                      onClick={() => setBrowseCategory(browseCategory === c.name ? '' : c.name)} 
+                      className={`p-3 rounded-xl border text-sm font-bold text-left transition-all ${browseCategory === c.name ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'}`}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex-1">
+                  <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">Location (Optional)</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                    <input 
+                      type="text" 
+                      value={browseLocation} 
+                      onChange={e => setBrowseLocation(e.target.value)} 
+                      placeholder="City, neighborhood, or ZIP" 
+                      className="w-full pl-10 pr-4 py-3.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-zinc-900 font-medium" 
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end pt-2 border-t border-zinc-100">
+                <button
+                  type="submit"
+                  disabled={isSearching}
+                  className="w-full sm:w-auto bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-zinc-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      Search Resources
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </motion.div>
 
       {/* Results Section */}
       <AnimatePresence mode="wait">
@@ -506,8 +505,6 @@ export default function Home() {
                   <ResourceCard
                     key={resource.id}
                     resource={resource}
-                    inGuide={myGuideIds.includes(resource.id)}
-                    onToggleGuide={toggleGuide}
                   />
                 ))}
               </div>

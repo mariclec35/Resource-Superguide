@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Clock3, ExternalLink, Filter, MapPin, Phone, RefreshCcw, Search } from 'lucide-react';
 import { useMeetings } from '../hooks/useMeetings';
-import type { MeetingFilters } from '../types';
+import type { Meeting, MeetingFilters, SupportListItem } from '../types';
+import AddToSupportListButton from '../components/AddToSupportListButton';
 
 const DAY_OPTIONS = [
   { value: '', label: 'Any day' },
@@ -30,6 +31,35 @@ function formatMeetingTime(time: string) {
 
 function formatDay(day: number) {
   return DAY_OPTIONS.find((option) => option.value === String(day))?.label || 'Unknown day';
+}
+
+function inferMeetingFormat(meeting: Meeting): string {
+  if (meeting.details?.virtual) return 'online';
+  const formats = (meeting.details?.formats || []).map((format) => format.toLowerCase());
+  if (formats.some((format) => format.includes('hybrid'))) return 'hybrid';
+  return 'in-person';
+}
+
+function toSupportListItem(meeting: Meeting): SupportListItem {
+  return {
+    id: `meeting-${meeting.meeting_id}`,
+    sourceId: meeting.meeting_id,
+    type: 'meeting',
+    title: meeting.meeting_name,
+    description: meeting.details?.notes || meeting.details?.tool_based_description || undefined,
+    category: meeting.subtype || meeting.details?.fellowship || undefined,
+    tags: meeting.details?.formats || [],
+    address: meeting.address || undefined,
+    locationName: meeting.location_name || undefined,
+    phone: meeting.contact_info?.contact_phone || undefined,
+    email: meeting.contact_info?.contact_email || undefined,
+    website: meeting.contact_info?.website || undefined,
+    date: formatDay(meeting.day),
+    startTime: formatMeetingTime(meeting.time),
+    recurrence: formatDay(meeting.day),
+    format: inferMeetingFormat(meeting),
+    addedAt: new Date().toISOString(),
+  };
 }
 
 export default function FindMeetings() {
@@ -272,6 +302,7 @@ export default function FindMeetings() {
                 const mapsQuery = meeting.address || meeting.location_name || meeting.meeting_name;
                 const pathwayType = meeting.details?.pathway_type || null;
                 const styles = badgeStyles(meeting.subtype, pathwayType);
+                const supportListItem = toSupportListItem(meeting);
 
                 return (
                   <article
@@ -365,17 +396,20 @@ export default function FindMeetings() {
                       <div className="text-xs text-zinc-400">
                         Synced {new Date(meeting.last_sync).toLocaleString()}
                       </div>
-                      {mapsQuery && (
-                        <a
-                          href={`https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-700 hover:text-emerald-700"
-                        >
-                          Directions
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <AddToSupportListButton item={supportListItem} variant="compact" />
+                        {mapsQuery && (
+                          <a
+                            href={`https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-700 hover:text-emerald-700"
+                          >
+                            Directions
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </article>
                 );

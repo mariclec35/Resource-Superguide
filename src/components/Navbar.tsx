@@ -1,45 +1,34 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MapPin, BookOpen, ShieldCheck, Menu, X, Calendar, Users, ChevronDown } from 'lucide-react';
+import { MapPin, ClipboardList, ShieldCheck, Menu, X, Calendar, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import BrandLogo from './BrandLogo';
-
-function NavBadge({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center rounded-full bg-zinc-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-zinc-500">
-      {label}
-    </span>
-  );
-}
+import { useSupportList } from './SupportListProvider';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
   const location = useLocation();
+  const { getCount } = useSupportList();
+  const supportListCount = getCount();
 
   const navLinks = [
-    { 
-      name: 'Find Resources', 
-      href: '/', 
-      icon: MapPin,
-      dropdown: [
-        { name: 'My Resources', href: '/my-guide', icon: BookOpen }
-      ]
-    },
-    { name: 'Find Meetings', href: '/meetings', icon: Users, badge: 'Soon' },
-    { name: 'Find Events', href: '/events', icon: Calendar, badge: 'Beta' },
+    { name: 'Find Resources', href: '/', icon: MapPin },
+    { name: 'Find Meetings', href: '/meetings', icon: Users },
+    { name: 'Find Events', href: '/events', icon: Calendar },
+    { name: supportListCount > 0 ? `Support List (${supportListCount})` : 'Support List', href: '/support-list', icon: ClipboardList },
     { name: 'Our Mission', href: '/mission', icon: ShieldCheck },
   ];
 
   return (
-    <nav className="bg-white border-b border-zinc-200 sticky top-0 z-50">
+    <nav className="site-header bg-white border-b border-zinc-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between h-[104px] sm:h-[112px]">
           <div className="flex items-center">
             <Link to="/" className="flex items-center group">
               <BrandLogo
                 variant="navbar"
                 className="shrink-0"
-                imageClassName="h-9 sm:h-10 w-auto max-w-[240px] object-contain drop-shadow-sm transition-transform group-hover:scale-[1.02]"
+                imageClassName="h-16 sm:h-[72px] w-16 sm:w-[72px] object-contain shrink-0 drop-shadow-sm transition-transform group-hover:scale-[1.02]"
               />
             </Link>
           </div>
@@ -48,51 +37,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
             {navLinks.map((link) => {
               const Icon = link.icon;
-              const isActive = location.pathname === link.href || (link.dropdown && link.dropdown.some(d => location.pathname === d.href));
-              
-              if (link.dropdown) {
-                return (
-                  <div key={link.name} className="relative group">
-                    <Link
-                      to={link.href}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {link.name}
-                      {link.badge && <NavBadge label={link.badge} />}
-                      <ChevronDown className="w-3 h-3 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
-                    </Link>
-                    <div className="absolute left-0 pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                      <div className="bg-white border border-zinc-200 rounded-xl shadow-lg overflow-hidden">
-                        <div className="py-1">
-                          {link.dropdown.map((sublink) => {
-                            const SubIcon = sublink.icon;
-                            const isSubActive = location.pathname === sublink.href;
-                            return (
-                              <Link
-                                key={sublink.name}
-                                to={sublink.href}
-                                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium ${
-                                  isSubActive
-                                    ? 'bg-emerald-50 text-emerald-700'
-                                    : 'text-zinc-600 hover:bg-zinc-50 hover:text-emerald-700'
-                                }`}
-                              >
-                                <SubIcon className="w-4 h-4" />
-                                {sublink.name}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
+              const isActive = location.pathname === link.href;
 
               return (
                 <Link
@@ -106,7 +51,6 @@ export default function Navbar() {
                 >
                   <Icon className="w-4 h-4" />
                   {link.name}
-                  {link.badge && <NavBadge label={link.badge} />}
                 </Link>
               );
             })}
@@ -139,44 +83,19 @@ export default function Navbar() {
                 const isActive = location.pathname === link.href;
                 
                 return (
-                  <React.Fragment key={link.name}>
-                    <Link
-                      to={link.href}
-                      onClick={() => setIsOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-md text-base font-medium ${
-                        isActive
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {link.name}
-                      {link.badge && <NavBadge label={link.badge} />}
-                    </Link>
-                    {link.dropdown && (
-                      <div className="pl-6 space-y-1">
-                        {link.dropdown.map((sublink) => {
-                          const SubIcon = sublink.icon;
-                          const isSubActive = location.pathname === sublink.href;
-                          return (
-                            <Link
-                              key={sublink.name}
-                              to={sublink.href}
-                              onClick={() => setIsOpen(false)}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
-                                isSubActive
-                                  ? 'bg-emerald-50 text-emerald-700'
-                                  : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'
-                              }`}
-                            >
-                              <SubIcon className="w-4 h-4" />
-                              {sublink.name}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </React.Fragment>
+                  <Link
+                    key={link.name}
+                    to={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-md text-base font-medium ${
+                      isActive
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {link.name}
+                  </Link>
                 );
               })}
             </div>

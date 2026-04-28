@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar as CalendarIcon, List, Search, MapPin, Filter, Plus, CalendarDays, Clock, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isAfter, isBefore } from 'date-fns';
-import { RecoveryEvent } from '../types';
+import { RecoveryEvent, SupportListItem } from '../types';
+import AddToSupportListButton from '../components/AddToSupportListButton';
 
 export default function EventsLandingPage() {
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
@@ -225,8 +226,32 @@ export default function EventsLandingPage() {
   );
 }
 
+function toSupportListItem(event: RecoveryEvent): SupportListItem {
+  return {
+    id: `event-${event.id}`,
+    sourceId: event.id,
+    type: 'event',
+    title: event.title,
+    description: event.short_description || event.description || undefined,
+    category: event.category,
+    address: event.address || undefined,
+    city: event.city || undefined,
+    region: event.state || undefined,
+    locationName: event.location_name || undefined,
+    phone: event.contact_phone || undefined,
+    email: event.contact_email || undefined,
+    website: event.registration_link || event.website || undefined,
+    date: format(parseISO(event.start_datetime), 'EEEE, MMMM d, yyyy'),
+    startTime: format(parseISO(event.start_datetime), 'h:mm a'),
+    endTime: event.end_datetime ? format(parseISO(event.end_datetime), 'h:mm a') : undefined,
+    format: event.is_virtual ? 'online' : 'in-person',
+    addedAt: new Date().toISOString(),
+  };
+}
+
 const EventCard: React.FC<{ event: RecoveryEvent }> = ({ event }) => {
   const date = parseISO(event.start_datetime);
+  const supportListItem = toSupportListItem(event);
   
   return (
     <div className="bg-white border border-zinc-200 rounded-2xl p-6 hover:shadow-md transition-shadow flex flex-col md:flex-row gap-6 group">
@@ -262,7 +287,8 @@ const EventCard: React.FC<{ event: RecoveryEvent }> = ({ event }) => {
         <p className="text-zinc-600 line-clamp-2 text-sm">{event.description}</p>
       </div>
       
-      <div className="flex items-center md:items-end justify-start md:justify-end shrink-0 pt-4 md:pt-0 border-t md:border-t-0 border-zinc-100">
+      <div className="flex flex-col md:items-end justify-start gap-3 shrink-0 pt-4 md:pt-0 border-t md:border-t-0 border-zinc-100">
+        <AddToSupportListButton item={supportListItem} variant="compact" />
         <Link 
           to={`/events/${event.id}`}
           className="px-6 py-2.5 bg-zinc-900 text-white font-medium rounded-xl hover:bg-emerald-600 transition-colors w-full md:w-auto text-center"

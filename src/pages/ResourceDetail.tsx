@@ -5,10 +5,12 @@ import { Resource, Feedback } from '../types';
 import { 
   ArrowLeft, MapPin, Phone, Globe, CheckCircle2, AlertTriangle, Loader2,
   ExternalLink, Share2, MessageSquare, BookOpen, Star, Clock, User, ShieldCheck,
-  Sparkles, AlertCircle, TrendingUp, ArrowRight
+  Sparkles, AlertCircle, TrendingUp, ArrowRight, Building2, GitBranch
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
+import AddToSupportListButton from '../components/AddToSupportListButton';
+import type { SupportListItem } from '../types';
 
 function getLastVerifiedLabel(resource: Resource) {
   const candidate = resource.updated_at || resource.created_at || resource.last_verified;
@@ -22,13 +24,37 @@ function getLastVerifiedLabel(resource: Resource) {
   return format(parsed, 'MMM yyyy');
 }
 
+function toSupportListItem(resource: Resource): SupportListItem {
+  return {
+    id: `resource-${resource.id}`,
+    sourceId: resource.id,
+    type: 'resource',
+    title: resource.name,
+    description: resource.provides || resource.details || resource.remarks || undefined,
+    category: resource.category,
+    tags: resource.metadata?.pathway_tags || [],
+    address: resource.address || undefined,
+    city: resource.city || undefined,
+    region: resource.locations?.[0]?.state || undefined,
+    locationName: resource.locations?.[0]?.label || undefined,
+    phone: resource.phone || undefined,
+    email: resource.email || undefined,
+    website: resource.website || undefined,
+    addedAt: new Date().toISOString(),
+  };
+}
+
+function getResourceLogoUrl(resource?: Resource | null) {
+  if (!resource) return null;
+  return resource.logo_url || resource.metadata?.logo_url || resource.metadata?.logo || null;
+}
+
 export default function ResourceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [resource, setResource] = useState<Resource | null>(null);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
-  const [inGuide, setInGuide] = useState(false);
   const [showReportForm, setShowReportForm] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [reportSubmitting, setReportSubmitting] = useState(false);
@@ -42,18 +68,13 @@ export default function ResourceDetail() {
     if (id) {
       fetchResource(id);
       fetchFeedback(id);
-      const saved = localStorage.getItem('my-guide');
-      if (saved) {
-        const ids = JSON.parse(saved);
-        setInGuide(ids.includes(id));
-      }
     }
   }, [id]);
 
   const fetchResource = async (resourceId: string) => {
     setLoading(true);
-      try {
-      const response = await fetch(`/api/resources/${resourceId}`);
+    try {
+      const response = await fetch(`/api/resources/${resourceId}?includeRelations=true`);
       if (!response.ok) throw new Error('Failed to fetch resource');
       const data = await response.json();
       setResource(data);
@@ -79,21 +100,6 @@ export default function ResourceDetail() {
     } catch (err) {
       console.error('Error fetching feedback:', err);
     }
-  };
-
-  const toggleGuide = () => {
-    if (!id) return;
-    const saved = localStorage.getItem('my-guide');
-    let ids = saved ? JSON.parse(saved) : [];
-    
-    if (inGuide) {
-      ids = ids.filter((i: string) => i !== id);
-    } else {
-      ids.push(id);
-    }
-    
-    localStorage.setItem('my-guide', JSON.stringify(ids));
-    setInGuide(!inGuide);
   };
 
   const handleFeedbackSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -196,6 +202,16 @@ export default function ResourceDetail() {
 
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(resource.address)}`;
   const lastVerifiedLabel = getLastVerifiedLabel(resource);
+  const supportListItem = toSupportListItem(resource);
+  const parentOrganization = resource.parent_organization || null;
+  const childLocations = resource.child_locations || [];
+  const parentLogoUrl = getResourceLogoUrl(parentOrganization);
+  const isChildOfOrganization = Boolean(
+    resource.parent_org_slug &&
+    resource.parent_org_slug !== 'independent-provider' &&
+    parentOrganization
+  );
+  const childSectionTitle = childLocations.length > 1 ? 'Program Locations' : 'Local Branch Site';
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -205,6 +221,41 @@ export default function ResourceDetail() {
       </Link>
 
       <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden mb-8">
+        {isChildOfOrganization && parentOrganization && (
+          <div className="border-b border-emerald-100 bg-emerald-50/80 px-8 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+                  {parentLogoUrl ? (
+                    <img
+                      src={parentLogoUrl}
+                      alt={`${parentOrganization.name} logo`}
+                      className="h-full w-full object-contain p-1.5"
+                    />
+                  ) : (
+                    <Building2 className="h-5 w-5 text-emerald-700" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">
+                    Part of
+                  </p>
+                  <p className="text-sm font-bold text-zinc-900">
+                    {parentOrganization.name}
+                  </p>
+                </div>
+              </div>
+              <Link
+                to={`/resource/${parentOrganization.id}`}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 transition-colors hover:border-emerald-300 hover:text-emerald-800"
+              >
+                View parent organization
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Header Section */}
         <div className="p-8 border-b border-zinc-100">
           <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
@@ -261,17 +312,7 @@ export default function ResourceDetail() {
             </div>
 
             <div className="flex flex-col gap-2 w-full sm:w-auto">
-              <button
-                onClick={toggleGuide}
-                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
-                  inGuide 
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' 
-                    : 'bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50'
-                }`}
-              >
-                {inGuide ? <CheckCircle2 className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
-                {inGuide ? 'In My List' : 'Add to My List'}
-              </button>
+              <AddToSupportListButton item={supportListItem} />
               <a
                 href={googleMapsUrl}
                 target="_blank"
@@ -421,6 +462,85 @@ export default function ResourceDetail() {
                   <p className="text-zinc-600 text-sm leading-relaxed">
                     {resource.details}
                   </p>
+                </div>
+              )}
+
+              {childLocations.length > 0 && (
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6">
+                  <div className="mb-4 flex items-center gap-2">
+                    <GitBranch className="h-4 w-4 text-emerald-600" />
+                    <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                      {childSectionTitle}
+                    </h3>
+                  </div>
+                  <p className="mb-5 text-sm text-zinc-600">
+                    These local sites and programs are connected to {resource.name}.
+                  </p>
+                  <div className="space-y-3">
+                    {childLocations.map((child) => {
+                      const childMapsUrl = child.address
+                        ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(child.address)}`
+                        : null;
+
+                      return (
+                        <div
+                          key={child.id}
+                          className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-2">
+                              <Link
+                                to={`/resource/${child.id}`}
+                                className="inline-flex items-center gap-2 text-base font-bold text-zinc-900 transition-colors hover:text-emerald-700"
+                              >
+                                {child.name}
+                                <ArrowRight className="h-4 w-4 text-zinc-400" />
+                              </Link>
+                              <div className="space-y-1 text-sm text-zinc-600">
+                                {(child.address || child.city) && (
+                                  <p className="flex items-start gap-2">
+                                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+                                    <span>
+                                      {child.address || 'Address unavailable'}
+                                      {child.city ? `, ${child.city}` : ''}
+                                    </span>
+                                  </p>
+                                )}
+                                {child.phone && (
+                                  <a
+                                    href={`tel:${child.phone}`}
+                                    className="flex items-center gap-2 text-emerald-700 transition-colors hover:text-emerald-800 hover:underline"
+                                  >
+                                    <Phone className="h-4 w-4 text-zinc-400" />
+                                    {child.phone}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <Link
+                                to={`/resource/${child.id}`}
+                                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-sm font-bold text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-900"
+                              >
+                                View details
+                              </Link>
+                              {childMapsUrl && (
+                                <a
+                                  href={childMapsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 px-3 py-2 text-sm font-bold text-emerald-700 transition-colors hover:border-emerald-300 hover:text-emerald-800"
+                                >
+                                  Directions
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

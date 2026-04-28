@@ -14,50 +14,55 @@ import SubmitEventPage from './pages/SubmitEventPage';
 import Mission from './pages/Mission';
 import FindMeetings from './pages/FindMeetings';
 import BrandLogo from './components/BrandLogo';
+import { SupportListProvider } from './components/SupportListProvider';
+import SupportListPage from './pages/SupportListPage';
 
 export default function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 selection:bg-emerald-100 selection:text-emerald-900">
-        <Navbar />
-        <main className="pb-20">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/meetings" element={<FindMeetings />} />
-            <Route path="/events" element={<EventsLandingPage />} />
-            <Route path="/events/submit" element={<SubmitEventPage />} />
-            <Route path="/events/:id" element={<EventDetailPage />} />
-            <Route path="/resource/:id" element={<ResourceDetail />} />
-            <Route path="/my-guide" element={<MyGuide />} />
-            <Route path="/admin" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/mission" element={<Mission />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<TermsOfService />} />
-          </Routes>
-        </main>
-        
-        <footer className="bg-white border-t border-zinc-200 py-12 px-4">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center">
-              <BrandLogo
-                variant="compact"
-                imageClassName="h-16 w-auto object-contain"
-              />
+      <SupportListProvider>
+        <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 selection:bg-emerald-100 selection:text-emerald-900">
+          <Navbar />
+          <main className="pb-20">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/meetings" element={<FindMeetings />} />
+              <Route path="/events" element={<EventsLandingPage />} />
+              <Route path="/events/submit" element={<SubmitEventPage />} />
+              <Route path="/events/:id" element={<EventDetailPage />} />
+              <Route path="/resource/:id" element={<ResourceDetail />} />
+              <Route path="/support-list" element={<SupportListPage />} />
+              <Route path="/my-guide" element={<MyGuide />} />
+              <Route path="/admin" element={<AdminLogin />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/mission" element={<Mission />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+            </Routes>
+          </main>
+          
+          <footer className="bg-white border-t border-zinc-200 py-12 px-4">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="flex items-center">
+                <BrandLogo
+                  variant="compact"
+                  imageClassName="h-16 w-auto object-contain"
+                />
+              </div>
+              <p className="text-zinc-400 text-sm">
+                &copy; {new Date().getFullYear()} MN Recovery Hub. Supporting Minnesota recovery communities.
+              </p>
+              <div className="flex gap-6">
+                <Link to="/mission" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Our Mission</Link>
+                <Link to="/privacy" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Privacy</Link>
+                <Link to="/terms" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Terms</Link>
+                <a href="#" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Contact</a>
+                <Link to="/admin" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Admin</Link>
+              </div>
             </div>
-            <p className="text-zinc-400 text-sm">
-              &copy; {new Date().getFullYear()} MN Recovery Hub. Supporting Minnesota recovery communities.
-            </p>
-            <div className="flex gap-6">
-              <Link to="/mission" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Our Mission</Link>
-              <Link to="/privacy" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Privacy</Link>
-              <Link to="/terms" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Terms</Link>
-              <a href="#" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Contact</a>
-              <Link to="/admin" className="text-zinc-400 hover:text-zinc-900 text-sm font-medium transition-colors">Admin</Link>
-            </div>
-          </div>
-        </footer>
-      </div>
+          </footer>
+        </div>
+      </SupportListProvider>
     </Router>
   );
 }

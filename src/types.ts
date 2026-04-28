@@ -38,6 +38,8 @@ export interface Resource {
   name: string;
   category: string;
   subcategory?: string | null;
+  parent_org_slug?: string | null;
+  logo_url?: string | null;
   city?: string | null;
   address: string;
   phone: string | null;
@@ -58,6 +60,8 @@ export interface Resource {
     pathway_tags: string[];
     referral_required: string;
     last_verified: string;
+    logo_url?: string | null;
+    logo?: string | null;
   };
   eligibility?: {
     populations: string[];
@@ -94,6 +98,9 @@ export interface Resource {
   average_rating?: number;
   review_count?: number;
   ranking_score?: number;
+  parent_organization?: Resource | null;
+  child_locations?: Resource[];
+  map_cluster_children?: Resource[];
 }
 
 export interface Feedback {
@@ -252,4 +259,30 @@ export interface MeetingFilters {
   parentOrgSlug?: string;
   searchText?: string;
   subtype?: string;
+}
+
+export type SupportListItemType = 'resource' | 'meeting' | 'event';
+
+export interface SupportListItem {
+  id: string;
+  sourceId: string;
+  type: SupportListItemType;
+  title: string;
+  description?: string;
+  category?: string;
+  tags?: string[];
+  address?: string;
+  city?: string;
+  region?: string;
+  locationName?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  recurrence?: string;
+  format?: 'in-person' | 'online' | 'hybrid' | string;
+  notes?: string;
+  addedAt: string;
 }

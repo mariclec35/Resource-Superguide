@@ -957,7 +957,7 @@ app.post("/api/search/resources", async (req, res) => {
 // Public: Get resources for the directory
 app.get("/api/resources", async (req, res) => {
   try {
-    const { ids } = req.query;
+    const { ids, org_slug, parent_org_slug, includeRelations } = req.query;
     let query = supabase
       .from("resources")
       .select("*")
@@ -972,12 +972,104 @@ app.get("/api/resources", async (req, res) => {
       if (parsedIds.length > 0) {
         query = query.in("id", parsedIds);
       }
+    } else if (typeof org_slug === "string" && org_slug.trim()) {
+      query = query.eq("org_slug", org_slug.trim()).limit(1);
+    } else if (typeof parent_org_slug === "string" && parent_org_slug.trim()) {
+      query = query.eq("parent_org_slug", parent_org_slug.trim()).order("name");
     } else {
       query = query.order("name");
     }
 
     const { data, error } = await query;
     if (error) throw error;
+
+    if (typeof org_slug === "string" && org_slug.trim()) {
+      const resource = (data || [])[0] || null;
+
+      if (includeRelations === "true" && resource) {
+        const parentSlug = typeof resource.parent_org_slug === "string" ? resource.parent_org_slug.trim() : "";
+        const resourceOrgSlug = typeof resource.org_slug === "string" ? resource.org_slug.trim() : "";
+
+        let parentOrganization = null;
+        let childLocations: any[] = [];
+
+        if (parentSlug && parentSlug !== "independent-provider") {
+          const { data: parent } = await supabase
+            .from("resources")
+            .select("*")
+            .eq("org_slug", parentSlug)
+            .neq("status", "temporarily_closed")
+            .limit(1)
+            .maybeSingle();
+
+          parentOrganization = parent || null;
+        }
+
+        if (resourceOrgSlug) {
+          const { data: children } = await supabase
+            .from("resources")
+            .select("*")
+            .eq("parent_org_slug", resourceOrgSlug)
+            .neq("status", "temporarily_closed")
+            .order("name");
+
+          childLocations = children || [];
+        }
+
+        return res.status(200).json({
+          ...resource,
+          parent_organization: parentOrganization,
+          child_locations: childLocations,
+          map_cluster_children: childLocations,
+        });
+      }
+
+      return res.status(200).json(resource);
+    }
+
+    if (includeRelations === "true") {
+      const relatedResources = await Promise.all(
+        (data || []).map(async (resource: any) => {
+          const parentSlug = typeof resource.parent_org_slug === "string" ? resource.parent_org_slug.trim() : "";
+          const resourceOrgSlug = typeof resource.org_slug === "string" ? resource.org_slug.trim() : "";
+
+          let parentOrganization = null;
+          let childLocations: any[] = [];
+
+          if (parentSlug && parentSlug !== "independent-provider") {
+            const { data: parent } = await supabase
+              .from("resources")
+              .select("*")
+              .eq("org_slug", parentSlug)
+              .neq("status", "temporarily_closed")
+              .limit(1)
+              .maybeSingle();
+
+            parentOrganization = parent || null;
+          }
+
+          if (resourceOrgSlug) {
+            const { data: children } = await supabase
+              .from("resources")
+              .select("*")
+              .eq("parent_org_slug", resourceOrgSlug)
+              .neq("status", "temporarily_closed")
+              .order("name");
+
+            childLocations = children || [];
+          }
+
+          return {
+            ...resource,
+            parent_organization: parentOrganization,
+            child_locations: childLocations,
+            map_cluster_children: childLocations,
+          };
+        })
+      );
+
+      return res.status(200).json(relatedResources);
+    }
 
     res.status(200).json(data || []);
   } catch (err: any) {
@@ -998,6 +1090,45 @@ app.get("/api/resources/:id", async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    if (req.query.includeRelations === "true") {
+      const parentSlug = typeof data.parent_org_slug === "string" ? data.parent_org_slug.trim() : "";
+      const orgSlug = typeof data.org_slug === "string" ? data.org_slug.trim() : "";
+
+      let parentOrganization = null;
+      let childLocations: any[] = [];
+
+      if (parentSlug && parentSlug !== "independent-provider") {
+        const { data: parent } = await supabase
+          .from("resources")
+          .select("*")
+          .eq("org_slug", parentSlug)
+          .neq("status", "temporarily_closed")
+          .limit(1)
+          .maybeSingle();
+
+        parentOrganization = parent || null;
+      }
+
+      if (orgSlug) {
+        const { data: children } = await supabase
+          .from("resources")
+          .select("*")
+          .eq("parent_org_slug", orgSlug)
+          .neq("status", "temporarily_closed")
+          .order("name");
+
+        childLocations = children || [];
+      }
+
+      return res.status(200).json({
+        ...data,
+        parent_organization: parentOrganization,
+        child_locations: childLocations,
+        map_cluster_children: childLocations,
+      });
+    }
+
     res.status(200).json(data);
   } catch (err: any) {
     console.error("Failed to fetch resource:", err);
