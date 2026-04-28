@@ -24,7 +24,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const sources = await loadTsmlSources();
     const syncTimestamp = new Date().toISOString();
-    const summary: Array<{ source: string; fetched: number; upserted: number; removed: number }> = [];
+    const summary: Array<{
+      source: string;
+      name: string;
+      status: "ok" | "error";
+      fetched: number;
+      upserted: number;
+      removed: number;
+      error?: string;
+    }> = [];
     const { data: resources, error: resourcesError } = await supabase
       .from("resources")
       .select("org_slug, name, name_aliases")
@@ -35,52 +43,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const resourceCandidates = (resources || []) as ResourceMatchCandidate[];
 
     for (const source of sources) {
-      const meetings = await fetchSourceMeetings(source, syncTimestamp, resourceCandidates);
-      const meetingIds = meetings.map((meeting) => meeting.meeting_id);
+      try {
+        const meetings = await fetchSourceMeetings(source, syncTimestamp, resourceCandidates);
+        const meetingIds = meetings.map((meeting) => meeting.meeting_id);
 
-      if (meetings.length) {
-        const { error: upsertError } = await supabase
+        if (meetings.length) {
+          const { error: upsertError } = await supabase
+            .from("meetings")
+            .upsert(meetings, { onConflict: "meeting_id" });
+
+          if (upsertError) throw upsertError;
+        }
+
+        let removed = 0;
+        const { data: existingRows, error: existingError } = await supabase
           .from("meetings")
-          .upsert(meetings, { onConflict: "meeting_id" });
+          .select("meeting_id")
+          .eq("source_server", source.id);
 
-        if (upsertError) throw upsertError;
+        if (existingError) throw existingError;
+
+        const existingIds = (existingRows || []).map((row) => row.meeting_id as string);
+        const staleIds = meetingIds.length
+          ? existingIds.filter((id) => !meetingIds.includes(id))
+          : existingIds;
+
+        if (staleIds.length) {
+          const { data: removedRows, error: deleteError } = await supabase
+            .from("meetings")
+            .delete()
+            .in("meeting_id", staleIds)
+            .select("meeting_id");
+
+          if (deleteError) throw deleteError;
+          removed = removedRows?.length ?? 0;
+        }
+
+        summary.push({
+          source: source.id,
+          name: source.name,
+          status: "ok",
+          fetched: meetings.length,
+          upserted: meetings.length,
+          removed,
+        });
+      } catch (sourceError: any) {
+        summary.push({
+          source: source.id,
+          name: source.name,
+          status: "error",
+          fetched: 0,
+          upserted: 0,
+          removed: 0,
+          error: sourceError?.message || "Unknown source sync failure",
+        });
       }
-
-      let removed = 0;
-      const { data: existingRows, error: existingError } = await supabase
-        .from("meetings")
-        .select("meeting_id")
-        .eq("source_server", source.id);
-
-      if (existingError) throw existingError;
-
-      const existingIds = (existingRows || []).map((row) => row.meeting_id as string);
-      const staleIds = meetingIds.length
-        ? existingIds.filter((id) => !meetingIds.includes(id))
-        : existingIds;
-
-      if (staleIds.length) {
-        const { data: removedRows, error: deleteError } = await supabase
-          .from("meetings")
-          .delete()
-          .in("meeting_id", staleIds)
-          .select("meeting_id");
-
-        if (deleteError) throw deleteError;
-        removed = removedRows?.length ?? 0;
-      }
-
-      summary.push({
-        source: source.id,
-        fetched: meetings.length,
-        upserted: meetings.length,
-        removed,
-      });
     }
 
-    return res.status(200).json({
-      status: "ok",
+    const failedSources = summary.filter((entry) => entry.status === "error");
+    const okSources = summary.filter((entry) => entry.status === "ok");
+
+    return res.status(failedSources.length ? 207 : 200).json({
+      status: failedSources.length ? "partial" : "ok",
       syncedAt: syncTimestamp,
+      totals: {
+        sources: summary.length,
+        succeeded: okSources.length,
+        failed: failedSources.length,
+      },
       sources: summary,
     });
   } catch (err: any) {
