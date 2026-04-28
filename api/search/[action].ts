@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabase } from "../_lib/supabase";
-import { searchResources } from "../_lib/search";
+import { supabase } from "../_lib/supabase.js";
+import { searchResources } from "../_lib/search.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = Array.isArray(req.query.action) ? req.query.action[0] : req.query.action;

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabase } from "../_lib/supabase";
-import { fetchSourceMeetings, loadTsmlSources, type ResourceMatchCandidate } from "../_lib/meetings";
+import { supabase } from "../_lib/supabase.js";
+import { fetchSourceMeetings, loadTsmlSources, type ResourceMatchCandidate } from "../_lib/meetings.js";
 
 function isAuthorized(req: VercelRequest): boolean {
   const expected = process.env.CRON_SECRET;

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabase } from "./_lib/supabase";
+import { supabase } from "./_lib/supabase.js";
 
 const defaultSettings = {
   primaryHeader: "Find the support you need.",
