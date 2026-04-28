@@ -7,6 +7,8 @@ interface MeetingSyncSourceStatus {
   url: string;
   fellowship: string | null;
   count: number;
+  latestError: string | null;
+  latestErrorAt: string | null;
 }
 
 interface MeetingSyncStatus {
@@ -122,12 +124,30 @@ export default function AdminMeetingsManager() {
                     )}
                   </div>
                   <div className="text-sm text-zinc-500 break-all">{source.url}</div>
+                  {source.latestError && (
+                    <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2">
+                      <div className="text-xs font-black uppercase tracking-[0.18em] text-red-700">Latest sync error</div>
+                      <div className="mt-1 text-sm text-red-700">{source.latestError}</div>
+                      {source.latestErrorAt && (
+                        <div className="mt-1 text-xs text-red-600">
+                          {new Date(source.latestErrorAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="inline-flex items-center gap-2 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-700">
                     <CalendarDays className="w-4 h-4 text-zinc-400" />
                     {source.count} stored
+                  </div>
+                  <div className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold border ${
+                    source.latestError
+                      ? 'bg-red-50 border-red-200 text-red-700'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  }`}>
+                    {source.latestError ? 'Needs attention' : 'Healthy'}
                   </div>
                   <div className="inline-flex items-center gap-2 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-700">
                     <Link2 className="w-4 h-4 text-zinc-400" />

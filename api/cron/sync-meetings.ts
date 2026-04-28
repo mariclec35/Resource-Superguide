@@ -2,6 +2,25 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { supabase } from "../_lib/supabase.js";
 import { fetchSourceMeetings, loadTsmlSources, type ResourceMatchCandidate } from "../_lib/meetings.js";
 
+async function logSourceFailure(sourceId: string, sourceName: string, syncTimestamp: string, message: string) {
+  try {
+    await supabase.from("error_events").insert({
+      source: "job",
+      severity: "warning",
+      message: `Meeting sync failed for ${sourceName}`,
+      endpoint: "/api/cron/sync-meetings",
+      metadata: {
+        sourceId,
+        sourceName,
+        syncTimestamp,
+        error: message,
+      },
+    });
+  } catch {
+    // Avoid breaking sync reporting if logging fails.
+  }
+}
+
 function isAuthorized(req: VercelRequest): boolean {
   const expected = process.env.CRON_SECRET;
   if (!expected) return true;
@@ -88,6 +107,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           removed,
         });
       } catch (sourceError: any) {
+        const errorMessage = sourceError?.message || "Unknown source sync failure";
+        await logSourceFailure(source.id, source.name, syncTimestamp, errorMessage);
+
         summary.push({
           source: source.id,
           name: source.name,
@@ -95,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           fetched: 0,
           upserted: 0,
           removed: 0,
-          error: sourceError?.message || "Unknown source sync failure",
+          error: errorMessage,
         });
       }
     }
