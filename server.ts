@@ -322,6 +322,16 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
   const searchableNames = [textValue(resource.name), ...aliases].filter(Boolean);
   const strongKeywordTerms = keywordTerms.filter((term) => term.length >= 5 && !LOW_SIGNAL_TERMS.has(term));
   const strongNeedTerms = needTerms.filter((term) => term.length >= 5 && !LOW_SIGNAL_TERMS.has(term));
+  const promptServiceTerms = Array.from(
+    new Set(
+      Object.entries(SEARCH_SYNONYMS)
+        .flatMap(([key, synonyms]) => {
+          const candidates = [key, ...synonyms];
+          return candidates.some((candidate) => promptLower.includes(candidate)) ? candidates : [];
+        })
+        .filter((term) => isUsefulTerm(term) || term.includes(" "))
+    )
+  );
   const hasSoberIntent =
     promptLower.includes("sober") ||
     promptLower.includes("recovery housing") ||
@@ -335,19 +345,50 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
     /\bman\b|\bmen\b|\bmale\b/.test(promptLower) ||
     eligibilityTerms.includes("male") ||
     eligibilityTerms.includes("men");
+  const locationTokens = locationTerm.split(/[\s,/()-]+/).filter(isUsefulTerm);
+  const genericIntentTerms = new Set([
+    ...needTerms.flatMap((term) => term.split(/[\s,/()-]+/).filter(Boolean)),
+    ...eligibilityTerms.flatMap((term) => term.split(/[\s,/()-]+/).filter(Boolean)),
+    ...locationTokens,
+    ...Object.keys(SEARCH_SYNONYMS).flatMap((term) => term.split(/[\s,/()-]+/).filter(Boolean)),
+    ...Object.values(SEARCH_SYNONYMS).flatMap((synonyms) =>
+      synonyms.flatMap((term) => term.split(/[\s,/()-]+/).filter(Boolean))
+    ),
+  ]);
+  const nameCandidateTerms = promptLower
+    .split(/\W+/)
+    .filter(isUsefulTerm)
+    .filter((term) => term.length >= 4 && !genericIntentTerms.has(term));
+  const exactPromptNameMatch = searchableNames.some((name) => name.includes(promptLower));
+  const nameTermMatchCount = searchableNames.reduce((best, name) => {
+    const matchCount = nameCandidateTerms.filter((term) => name.includes(term)).length;
+    return Math.max(best, matchCount);
+  }, 0);
   const directNameMatch =
     searchableNames.some((name) => name.includes(promptLower)) ||
     aliases.some((alias) => alias.includes(promptLower)) ||
     searchableNames.some((name) =>
       strongKeywordTerms.some((term) => !LOW_SIGNAL_TERMS.has(term) && name.includes(term))
     );
+  const refinedDirectNameMatch =
+    exactPromptNameMatch ||
+    aliases.some((alias) => alias.includes(promptLower)) ||
+    (nameCandidateTerms.length > 0 && nameTermMatchCount >= Math.min(2, nameCandidateTerms.length));
+  let matchedLocation = false;
+  let matchedServiceType = false;
+  let matchedEligibility = false;
+  let matchedPathway = false;
 
-  if (directNameMatch) {
+  if (refinedDirectNameMatch) {
     score += 22;
     reasons.push("Strong title or alias match");
   }
 
   const matchedNeedTerms = needTerms.filter((term) => categoryTerms.some((value) => value.includes(term)));
+  matchedServiceType =
+    matchedNeedTerms.length > 0 ||
+    strongNeedTerms.some((term) => categoryTerms.some((value) => value.includes(term))) ||
+    promptServiceTerms.some((term) => categoryTerms.some((value) => value.includes(term)) || searchFields.includes(term));
   if (matchedNeedTerms.length > 0) {
     score += Math.min(32, 12 + matchedNeedTerms.length * 6);
     reasons.push(`Matches service type: ${matchedNeedTerms.slice(0, 3).join(", ")}`);
@@ -355,7 +396,8 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
 
   if (locationTerm) {
     const locationFields = [textValue(resource.city), textValue(resource.address), ...(resource.locations || []).flatMap((location) => [textValue(location.city), textValue(location.address), textValue(location.zip)])];
-    if (locationFields.some((field) => field.includes(locationTerm) || locationTerm.includes(field))) {
+    if (locationFields.some((field) => field && (field.includes(locationTerm) || locationTerm.includes(field)))) {
+      matchedLocation = true;
       score += 20;
       reasons.push(`Located in or near ${extraction.location}`);
     } else if (matchedNeedTerms.length > 0 || hasSoberIntent || hasWomenIntent || hasMenIntent) {
@@ -383,6 +425,7 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
     );
   });
   if (matchedEligibilityTerms.length > 0) {
+    matchedEligibility = true;
     score += Math.min(18, matchedEligibilityTerms.length * 5);
     reasons.push(`Fits eligibility clues: ${matchedEligibilityTerms.slice(0, 3).join(", ")}`);
   }
@@ -397,6 +440,7 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
   }
 
   if (hasWomenIntent && genderFocus === "female") {
+    matchedEligibility = true;
     score += 16;
     reasons.push("Aligned with women-specific eligibility");
   } else if (hasWomenIntent && genderFocus === "male") {
@@ -404,6 +448,7 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
   }
 
   if (hasMenIntent && genderFocus === "male") {
+    matchedEligibility = true;
     score += 16;
     reasons.push("Aligned with men-specific eligibility");
   } else if (hasMenIntent && genderFocus === "female") {
@@ -411,6 +456,7 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
   }
 
   if (hasSoberIntent && resource.eligibility?.sober_living_required) {
+    matchedPathway = true;
     score += 20;
     reasons.push("Supports sober living or recovery housing");
   }
@@ -421,6 +467,7 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
       STRONG_PATHWAY_TERMS.some((pathwayTerm) => term.includes(pathwayTerm))
     )
   ) {
+    matchedPathway = true;
     score += 12;
   }
 
@@ -439,10 +486,23 @@ function scoreResource(resource: ReturnType<typeof normalizeSearchResource>, ext
     score += 10;
   }
 
+  if (!hasSoberIntent) matchedPathway = true;
+  if (!locationTerm) matchedLocation = true;
+  if (!hasWomenIntent && !hasMenIntent && eligibilityTerms.length === 0) matchedEligibility = true;
+  if (!matchedServiceType && (strongKeywordTerms.length === 0 && strongNeedTerms.length === 0)) matchedServiceType = true;
+
   return {
     ...resource,
     matchScore: score,
     matchReasons: Array.from(new Set(reasons)).slice(0, 4),
+    _constraintSignals: {
+      directNameMatch,
+      refinedDirectNameMatch,
+      matchedLocation,
+      matchedServiceType,
+      matchedEligibility,
+      matchedPathway,
+    },
   };
 }
 
@@ -509,6 +569,17 @@ function applyHardSearchConstraints(
 ) {
   const promptLower = prompt.toLowerCase();
   const eligibilityTerms = expandTerms(extraction.eligibility_clues || []);
+  const needTerms = expandTerms(extraction.need_types || []);
+  const promptServiceTerms = Array.from(
+    new Set(
+      Object.entries(SEARCH_SYNONYMS)
+        .flatMap(([key, synonyms]) => {
+          const candidates = [key, ...synonyms];
+          return candidates.some((candidate) => promptLower.includes(candidate)) ? candidates : [];
+        })
+        .filter((term) => isUsefulTerm(term) || term.includes(" "))
+    )
+  );
   const hasWomenIntent =
     /\bwoman\b|\bwomen\b|\bfemale\b/.test(promptLower) ||
     eligibilityTerms.includes("female") ||
@@ -521,15 +592,44 @@ function applyHardSearchConstraints(
     promptLower.includes("sober") ||
     promptLower.includes("recovery housing") ||
     promptLower.includes("sober living");
+  const hasLocationIntent = Boolean(textValue(extraction.location).replace(/^not specified$/, "").trim());
+  const hasStrongServiceIntent =
+    hasSoberIntent ||
+    needTerms.some((term) => STRONG_PATHWAY_TERMS.includes(term) || term.includes("housing") || term.includes("shelter") || term.includes("treatment") || term.includes("food") || term.includes("employment") || term.includes("legal")) ||
+    promptServiceTerms.length > 0;
 
   return results.filter((result) => {
     const genderFocus = textValue(result.eligibility?.gender_focus);
+    const signals = (result as any)._constraintSignals || {
+      directNameMatch: false,
+      refinedDirectNameMatch: false,
+      matchedLocation: true,
+      matchedServiceType: true,
+      matchedEligibility: true,
+      matchedPathway: true,
+    };
 
     if (hasMenIntent && hasSoberIntent && genderFocus === "female") {
       return false;
     }
 
     if (hasWomenIntent && hasSoberIntent && genderFocus === "male") {
+      return false;
+    }
+
+    if (hasLocationIntent && (hasStrongServiceIntent || hasWomenIntent || hasMenIntent) && !signals.matchedLocation) {
+      return false;
+    }
+
+    if (hasStrongServiceIntent && !signals.matchedServiceType) {
+      return false;
+    }
+
+    if ((hasWomenIntent || hasMenIntent || eligibilityTerms.length > 0) && !signals.matchedEligibility) {
+      return false;
+    }
+
+    if (hasSoberIntent && !signals.matchedPathway) {
       return false;
     }
 
