@@ -37,6 +37,63 @@ import AdminEventsManager from '../components/AdminEventsManager';
 import AdminMeetingsManager from '../components/AdminMeetingsManager';
 import BrandLogo from '../components/BrandLogo';
 
+type AdminSummary = {
+  resources: {
+    total: number;
+    active: number;
+    needsVerification: number;
+    temporarilyClosed: number;
+    topResources: Array<any>;
+    recentResources: Array<any>;
+    derivedCategories: Array<{ name: string; total: number; subcategories: Array<{ name: string; total: number }> }>;
+    reviewsEnabled: boolean;
+  };
+  categories: {
+    total: number;
+    configured: boolean;
+  };
+  meetings: {
+    total: number;
+    linked: number;
+    unlinked: number;
+  };
+  events: {
+    total: number;
+    recentEvents: Array<any>;
+  };
+  reports: {
+    total: number;
+    open: number;
+    configured: boolean;
+  };
+  feedback: {
+    total: number;
+    pending: number;
+    configured: boolean;
+  };
+  searchAnalytics: {
+    configured: boolean;
+    total: number;
+    successRate: number;
+    zeroResultRate: number;
+    avgResults: number;
+    recentSearches: Array<any>;
+  };
+  errorEvents: {
+    total: number;
+    recent: Array<any>;
+  };
+};
+
+async function fetchAdminSummary(): Promise<AdminSummary> {
+  const response = await fetch('/api/admin/dashboard/summary');
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to load admin summary');
+  }
+  return payload;
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
@@ -79,7 +136,6 @@ export default function AdminDashboard() {
     { id: 'categories', label: 'Categories', icon: <Layers className="w-4 h-4" /> },
     { id: 'meetings', label: 'Meetings', icon: <Users className="w-4 h-4" /> },
     { id: 'events', label: 'Events', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'homepage', label: 'Homepage Settings', icon: <LayoutGrid className="w-4 h-4" /> },
     { id: 'feedback', label: 'Feedback Intelligence', icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'reports', label: 'Reports & Issues', icon: <ShieldAlert className="w-4 h-4" /> },
@@ -202,7 +258,6 @@ export default function AdminDashboard() {
         {activeTab === 'import' && <DataImporter />}
         {activeTab === 'ai' && <AdminAI />}
         {activeTab === 'maintenance' && <MaintenanceManager />}
-        {activeTab === 'homepage' && <HomepageSettingsManager />}
         {activeTab === 'events' && <AdminEventsManager />}
       </div>
     </div>
@@ -314,62 +369,66 @@ function MaintenanceManager() {
 }
 
 function Overview() {
-  const [stats, setStats] = useState<any>(null);
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
+    const loadSummary = async () => {
+      setLoading(true);
+      try {
+        setSummary(await fetchAdminSummary());
+      } catch (err) {
+        console.error('Error fetching admin summary:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSummary();
   }, []);
 
-  const fetchStats = async () => {
-    setLoading(true);
-    try {
-      const [
-        { count: totalResources },
-        { count: totalSearches },
-        { count: totalFeedback },
-        { count: pendingFeedback },
-        { count: totalReports },
-        { count: openReports },
-        { data: topResources },
-        { data: recentActivity }
-      ] = await Promise.all([
-        supabase.from('resources').select('*', { count: 'exact', head: true }),
-        supabase.from('search_analytics').select('*', { count: 'exact', head: true }),
-        supabase.from('resource_feedback').select('*', { count: 'exact', head: true }),
-        supabase.from('resource_feedback').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('reports').select('*', { count: 'exact', head: true }),
-        supabase.from('reports').select('*', { count: 'exact', head: true }).eq('report_status', 'open'),
-        supabase.from('resources').select('name, review_count, average_rating').order('review_count', { ascending: false }).limit(5),
-        supabase.from('resources').select('name, updated_at').order('updated_at', { ascending: false }).limit(5)
-      ]);
-
-      setStats({
-        totalResources,
-        totalSearches,
-        totalFeedback,
-        pendingFeedback,
-        totalReports,
-        openReports,
-        topResources,
-        recentActivity
-      });
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>;
+
+  const dataIssues =
+    (summary?.resources.needsVerification || 0) +
+    (summary?.meetings.unlinked || 0) +
+    (summary?.reports.open || 0) +
+    (summary?.categories.total === 0 ? 1 : 0);
+
+  const recentActivity = [
+    ...(summary?.errorEvents.recent || []).map((event: any) => ({
+      id: `error-${event.id}`,
+      label: event.severity === 'critical' || event.severity === 'error' ? 'Logged system error' : 'Recorded system warning',
+      detail: event.message,
+      time: event.created_at,
+      tone: event.severity === 'critical' || event.severity === 'error' ? 'red' : 'amber'
+    })),
+    ...(summary?.resources.recentResources || []).map((resource: any) => ({
+      id: `resource-${resource.id}`,
+      label: 'Updated resource',
+      detail: resource.name,
+      time: resource.updated_at || resource.created_at,
+      tone: 'emerald'
+    })),
+    ...(summary?.events.recentEvents || []).map((event: any) => ({
+      id: `event-${event.id}`,
+      label: 'Touched event record',
+      detail: event.title,
+      time: event.updated_at || event.created_at,
+      tone: 'zinc'
+    }))
+  ]
+    .filter((item) => item.time)
+    .sort((a, b) => Date.parse(b.time) - Date.parse(a.time))
+    .slice(0, 6);
 
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Resources" value={stats?.totalResources || 0} icon={<BookOpen className="w-5 h-5" />} color="zinc" />
-        <StatCard title="Search Effectiveness" value={`${Math.round(((stats?.totalSearches || 0) / (stats?.totalSearches || 1)) * 100)}%`} icon={<BarChart3 className="w-5 h-5" />} color="emerald" />
-        <StatCard title="Feedback Queue" value={stats?.pendingFeedback || 0} icon={<Star className="w-5 h-5" />} color="amber" />
-        <StatCard title="Open Reports" value={stats?.openReports || 0} icon={<AlertCircle className="w-5 h-5" />} color="red" />
+        <StatCard title="Total Resources" value={summary?.resources.total || 0} icon={<BookOpen className="w-5 h-5" />} color="zinc" />
+        <StatCard title="Search Effectiveness" value={summary?.searchAnalytics.configured ? `${Math.round(summary.searchAnalytics.successRate)}%` : 'Not setup'} icon={<BarChart3 className="w-5 h-5" />} color="emerald" />
+        <StatCard title="Feedback Queue" value={summary?.feedback.configured ? summary.feedback.pending : 'Not setup'} icon={<Star className="w-5 h-5" />} color="amber" />
+        <StatCard title="Data Issues" value={dataIssues} icon={<AlertCircle className="w-5 h-5" />} color="red" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -380,24 +439,32 @@ function Overview() {
                 <TrendingUp className="w-5 h-5 text-emerald-500" />
                 Resource Performance
               </h3>
-              <button className="text-xs font-bold text-zinc-400 hover:text-zinc-900 uppercase tracking-widest">View All</button>
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                {summary?.resources.reviewsEnabled ? 'Review-driven' : 'Recent records'}
+              </span>
             </div>
             <div className="space-y-4">
-              {stats?.topResources?.map((r: any, i: number) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 hover:border-zinc-200 transition-all group">
+              {(summary?.resources.topResources || []).map((resource: any, i: number) => (
+                <div key={resource.id || i} className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 hover:border-zinc-200 transition-all group">
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-xs font-black text-zinc-400">
                       {i + 1}
                     </div>
                     <div>
-                      <p className="font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors">{r.name}</p>
+                      <p className="font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors">{resource.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <div className="flex items-center gap-0.5">
-                          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                          <span className="text-[10px] font-bold text-zinc-500">{r.average_rating?.toFixed(1) || '0.0'}</span>
-                        </div>
-                        <span className="text-zinc-300">•</span>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{r.review_count || 0} Reviews</span>
+                        {summary?.resources.reviewsEnabled ? (
+                          <>
+                            <div className="flex items-center gap-0.5">
+                              <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                              <span className="text-[10px] font-bold text-zinc-500">{resource.average_rating?.toFixed(1) || '0.0'}</span>
+                            </div>
+                            <span className="text-zinc-300">�</span>
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{resource.review_count || 0} Reviews</span>
+                          </>
+                        ) : (
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{resource.status?.replace(/_/g, ' ') || 'Recently updated'}</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -415,17 +482,25 @@ function Overview() {
               </h3>
             </div>
             <div className="space-y-4">
-              {stats?.recentActivity?.map((a: any, i: number) => (
-                <div key={i} className="flex items-center gap-4 p-4 border-l-2 border-zinc-100 hover:border-emerald-500 transition-all">
-                  <div className="w-2 h-2 rounded-full bg-zinc-200" />
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center gap-4 p-4 border-l-2 border-zinc-100 hover:border-emerald-500 transition-all">
+                  <div className={`w-2 h-2 rounded-full ${
+                    activity.tone === 'red' ? 'bg-red-400' :
+                    activity.tone === 'amber' ? 'bg-amber-400' :
+                    activity.tone === 'emerald' ? 'bg-emerald-400' :
+                    'bg-zinc-300'
+                  }`} />
                   <div>
                     <p className="text-sm font-medium text-zinc-900">
-                      Updated <span className="font-bold">"{a.name}"</span>
+                      {activity.label} <span className="font-bold">"{activity.detail}"</span>
                     </p>
-                    <p className="text-xs text-zinc-400">{format(new Date(a.updated_at), 'MMM d, HH:mm')}</p>
+                    <p className="text-xs text-zinc-400">{format(new Date(activity.time), 'MMM d, HH:mm')}</p>
                   </div>
                 </div>
               ))}
+              {recentActivity.length === 0 && (
+                <p className="text-sm text-zinc-400 italic">No recent system activity has been recorded yet.</p>
+              )}
             </div>
           </div>
         </div>
@@ -439,10 +514,14 @@ function Overview() {
               </div>
               <h3 className="text-xl font-black mb-2 tracking-tight">Operational Tip</h3>
               <p className="text-zinc-400 text-sm leading-relaxed mb-6">
-                You have <span className="text-white font-bold">{stats?.pendingFeedback || 0} feedback items</span> waiting for moderation. Keeping this queue clear improves site trust.
+                {summary?.categories.total === 0
+                  ? <>Your managed categories table is still empty. The site is currently falling back to categories derived from resource records.</>
+                  : summary?.feedback.configured
+                    ? <>You have <span className="text-white font-bold">{summary.feedback.pending} feedback items</span> waiting for moderation. Keeping this queue clear improves site trust.</>
+                    : <>Feedback moderation is not configured yet, so the best cleanup target is the <span className="text-white font-bold">{summary?.resources.needsVerification || 0} resources</span> still marked for verification.</>}
               </p>
               <button className="w-full py-3 bg-white text-zinc-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-400 transition-all">
-                Moderate Now
+                {summary?.categories.total === 0 ? 'Review Categories' : summary?.feedback.configured ? 'Moderate Now' : 'Review Resources'}
               </button>
             </div>
           </div>
@@ -451,9 +530,9 @@ function Overview() {
             <h3 className="text-lg font-black text-zinc-900 mb-6 tracking-tight">System Health</h3>
             <div className="space-y-4">
               <HealthItem label="Database" status="online" />
-              <HealthItem label="Search Engine" status="online" />
-              <HealthItem label="Intelligence API" status="online" />
-              <HealthItem label="Storage" status="online" />
+              <HealthItem label="Search Analytics" status={summary?.searchAnalytics.configured ? 'online' : 'warning'} />
+              <HealthItem label="Feedback Pipeline" status={summary?.feedback.configured ? 'online' : 'warning'} />
+              <HealthItem label="Category Table" status={summary && summary.categories.total > 0 ? 'online' : 'warning'} />
             </div>
           </div>
         </div>
@@ -461,7 +540,6 @@ function Overview() {
     </div>
   );
 }
-
 function HealthItem({ label, status }: { label: string, status: 'online' | 'offline' | 'warning' }) {
   return (
     <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
@@ -509,96 +587,33 @@ function StatCard({ title, value, icon, color }: { title: string, value: number 
 }
 
 function SearchAnalyticsDashboard() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState<'effectiveness' | 'engagement' | 'signals' | 'gaps'>('effectiveness');
-  const [stats, setStats] = useState({
-    zeroResultRate: 0,
-    avgResults: 0,
-    topTerms: [] as any[],
-    topResources: [] as any[],
-    signals: [] as any[]
-  });
 
   useEffect(() => {
-    fetchData();
-  }, [activeSubTab]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      if (activeSubTab === 'effectiveness' || activeSubTab === 'gaps') {
-        const { data, error } = await supabase
-          .from('search_analytics')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
-        
-        if (!error && data) {
-          setLogs(data);
-          const zeroResults = data.filter(l => l.results_count === 0).length;
-          const avg = data.reduce((acc, curr) => acc + curr.results_count, 0) / data.length;
-          
-          // Extract top terms
-          const terms: Record<string, number> = {};
-          data.forEach(l => {
-            l.extracted_needs?.need_types?.forEach((n: string) => {
-              terms[n] = (terms[n] || 0) + 1;
-            });
-          });
-          const sortedTerms = Object.entries(terms)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 5)
-            .map(([name, count]) => ({ name, count }));
-
-          setStats(prev => ({
-            ...prev,
-            zeroResultRate: (zeroResults / data.length) * 100,
-            avgResults: avg,
-            topTerms: sortedTerms
-          }));
-        }
-      } else if (activeSubTab === 'engagement') {
-        const { data, error } = await supabase
-          .from('resources')
-          .select('id, name, category, review_count, average_rating')
-          .order('review_count', { ascending: false })
-          .limit(10);
-        if (!error) setStats(prev => ({ ...prev, topResources: data || [] }));
-      } else if (activeSubTab === 'signals') {
-        const { data, error } = await supabase
-          .from('resource_feedback')
-          .select('signals')
-          .not('signals', 'is', null);
-        
-        if (!error && data) {
-          const signalCounts: Record<string, number> = {};
-          data.forEach(f => {
-            if (f.signals) {
-              Object.entries(f.signals).forEach(([key, value]) => {
-                if (value) signalCounts[key] = (signalCounts[key] || 0) + 1;
-              });
-            }
-          });
-          setStats(prev => ({ 
-            ...prev, 
-            signals: Object.entries(signalCounts).map(([name, count]) => ({ name, count }))
-          }));
-        }
+    const loadSummary = async () => {
+      setLoading(true);
+      try {
+        setSummary(await fetchAdminSummary());
+      } catch (err) {
+        console.error('Error fetching analytics summary:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Error fetching analytics data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    loadSummary();
+  }, []);
+
+  const zeroResultLogs = (summary?.searchAnalytics.recentSearches || []).filter((log: any) => log.results_count === 0);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-zinc-900 tracking-tight">Intelligence Analytics</h2>
-          <p className="text-sm text-zinc-500">Monitor search performance and resource health.</p>
+          <p className="text-sm text-zinc-500">Monitor search performance and spot where the data model still needs support.</p>
         </div>
         <div className="flex gap-2 p-1 bg-zinc-100 rounded-xl overflow-x-auto max-w-full">
           {[
@@ -611,8 +626,8 @@ function SearchAnalyticsDashboard() {
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id as any)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
-                activeSubTab === tab.id 
-                  ? 'bg-white text-zinc-900 shadow-sm' 
+                activeSubTab === tab.id
+                  ? 'bg-white text-zinc-900 shadow-sm'
                   : 'text-zinc-500 hover:text-zinc-700'
               }`}
             >
@@ -627,28 +642,30 @@ function SearchAnalyticsDashboard() {
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>
       ) : (
         <div className="space-y-6">
-          {activeSubTab === 'effectiveness' && (
+          {(activeSubTab === 'effectiveness' || activeSubTab === 'gaps') && !summary?.searchAnalytics.configured && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+              <p className="text-sm font-bold text-amber-900">Search analytics is not configured yet.</p>
+              <p className="text-sm text-amber-800 mt-1">The dashboard can only show real search effectiveness after the `search_analytics` table is added and the live site starts writing to it.</p>
+            </div>
+          )}
+
+          {activeSubTab === 'effectiveness' && summary?.searchAnalytics.configured && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Search Success Rate</p>
+                  <p className="text-2xl font-black text-emerald-600">{summary.searchAnalytics.successRate.toFixed(1)}%</p>
+                  <p className="text-xs text-zinc-400 mt-1">Recent searches returning at least one result</p>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
                   <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Zero Result Rate</p>
-                  <p className="text-2xl font-black text-red-500">{stats.zeroResultRate.toFixed(1)}%</p>
+                  <p className="text-2xl font-black text-red-500">{summary.searchAnalytics.zeroResultRate.toFixed(1)}%</p>
                   <p className="text-xs text-zinc-400 mt-1">Searches with no matches</p>
                 </div>
                 <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Avg Matches</p>
-                  <p className="text-2xl font-black text-zinc-900">{stats.avgResults.toFixed(1)}</p>
-                  <p className="text-xs text-zinc-400 mt-1">Resources per search</p>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Top Search Needs</p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {stats.topTerms.map((t, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-zinc-100 text-zinc-600 text-[10px] font-bold rounded uppercase">
-                        {t.name} ({t.count})
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Average Matches</p>
+                  <p className="text-2xl font-black text-zinc-900">{summary.searchAnalytics.avgResults.toFixed(1)}</p>
+                  <p className="text-xs text-zinc-400 mt-1">Resources returned per search</p>
                 </div>
               </div>
 
@@ -657,34 +674,18 @@ function SearchAnalyticsDashboard() {
                   <thead>
                     <tr className="bg-zinc-50 border-b border-zinc-200">
                       <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">User Prompt</th>
-                      <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">AI Extraction</th>
                       <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Results</th>
+                      <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Success</th>
                       <th className="px-6 py-4 text-xs font-black text-zinc-400 uppercase tracking-widest">Time</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {logs.map((log) => (
+                    {(summary.searchAnalytics.recentSearches || []).slice(0, 25).map((log: any) => (
                       <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
-                        <td className="px-6 py-4 max-w-xs">
-                          <p className="text-sm text-zinc-900 line-clamp-2 font-medium">"{log.raw_prompt}"</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
-                            {log.extracted_needs?.need_types?.map((n: string, i: number) => (
-                              <span key={i} className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 text-[10px] font-bold uppercase tracking-wider">
-                                {n}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`text-sm font-black ${log.results_count > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {log.results_count} matches
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-xs text-zinc-400">{format(new Date(log.created_at), 'MMM d, HH:mm')}</p>
-                        </td>
+                        <td className="px-6 py-4 max-w-xs"><p className="text-sm text-zinc-900 line-clamp-2 font-medium">"{log.raw_prompt}"</p></td>
+                        <td className="px-6 py-4"><span className="text-sm font-black text-zinc-900">{log.results_count || 0}</span></td>
+                        <td className="px-6 py-4"><span className={`text-xs font-black uppercase tracking-widest ${log.search_success ? 'text-emerald-600' : 'text-red-500'}`}>{log.search_success ? 'Matched' : 'No match'}</span></td>
+                        <td className="px-6 py-4"><p className="text-xs text-zinc-400">{format(new Date(log.created_at), 'MMM d, HH:mm')}</p></td>
                       </tr>
                     ))}
                   </tbody>
@@ -695,29 +696,27 @@ function SearchAnalyticsDashboard() {
 
           {activeSubTab === 'engagement' && (
             <div className="grid grid-cols-1 gap-4">
-              {stats.topResources.map((r, i) => (
-                <div key={r.id} className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center justify-between">
+              {(summary?.resources.topResources || []).map((resource: any, i: number) => (
+                <div key={resource.id || i} className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-sm font-black text-zinc-400">
-                      {i + 1}
-                    </div>
+                    <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-sm font-black text-zinc-400">{i + 1}</div>
                     <div>
-                      <p className="font-bold text-zinc-900">{r.name}</p>
-                      <p className="text-xs text-zinc-500 uppercase tracking-widest font-black">{r.category}</p>
+                      <p className="font-bold text-zinc-900">{resource.name}</p>
+                      <p className="text-xs text-zinc-500 uppercase tracking-widest font-black">{resource.category || 'Uncategorized'}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-8">
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Avg Rating</p>
-                      <div className="flex items-center gap-1 justify-end">
-                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                        <span className="text-sm font-bold text-zinc-900">{r.average_rating?.toFixed(1) || '0.0'}</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Reviews</p>
-                      <p className="text-sm font-bold text-zinc-900">{r.review_count || 0}</p>
-                    </div>
+                  <div className="text-right">
+                    {summary?.resources.reviewsEnabled ? (
+                      <>
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Reviews</p>
+                        <p className="text-sm font-bold text-zinc-900">{resource.review_count || 0} at {resource.average_rating?.toFixed(1) || '0.0'}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Status</p>
+                        <p className="text-sm font-bold text-zinc-900">{resource.status?.replace(/_/g, ' ') || 'Recently updated'}</p>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -725,56 +724,39 @@ function SearchAnalyticsDashboard() {
           )}
 
           {activeSubTab === 'signals' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {stats.signals.map((s, i) => (
-                <div key={i} className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-bold text-zinc-900 capitalize">{s.name.replace(/_/g, ' ')}</p>
-                    <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase tracking-widest">
-                      {s.count} mentions
-                    </span>
-                  </div>
-                  <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-500 h-full rounded-full" 
-                      style={{ width: `${Math.min(100, (s.count / 50) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-              {stats.signals.length === 0 && (
-                <div className="col-span-2 py-20 text-center">
-                  <p className="text-sm text-zinc-400 italic">No quality signals extracted yet. Signals appear as feedback is moderated.</p>
-                </div>
-              )}
-            </div>
+            summary?.feedback.configured ? (
+              <div className="bg-white border border-zinc-200 rounded-2xl p-8 shadow-sm">
+                <p className="text-sm font-bold text-zinc-900">Feedback moderation is configured.</p>
+                <p className="text-sm text-zinc-500 mt-1">There are {summary.feedback.pending} pending items out of {summary.feedback.total} total submissions.</p>
+              </div>
+            ) : (
+              <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-8 text-center">
+                <Sparkles className="w-10 h-10 text-zinc-300 mx-auto mb-3" />
+                <p className="text-sm font-bold text-zinc-900">Quality signals are not live yet.</p>
+                <p className="text-sm text-zinc-500 mt-1">The feedback table is not configured, so there are no moderation signals to aggregate yet.</p>
+              </div>
+            )
           )}
 
-          {activeSubTab === 'gaps' && (
+          {activeSubTab === 'gaps' && summary?.searchAnalytics.configured && (
             <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="p-6 border-b border-zinc-100">
                 <h3 className="text-sm font-black text-zinc-900 uppercase tracking-widest">Zero-Result Search Terms</h3>
-                <p className="text-xs text-zinc-500 mt-1">These terms were extracted from searches that returned no resources.</p>
+                <p className="text-xs text-zinc-500 mt-1">These are the recent searches that returned no resources.</p>
               </div>
               <div className="divide-y divide-zinc-100">
-                {logs.filter(l => l.results_count === 0).slice(0, 20).map((log, i) => (
-                  <div key={i} className="p-4 hover:bg-zinc-50 transition-colors flex items-center justify-between">
+                {zeroResultLogs.slice(0, 20).map((log: any) => (
+                  <div key={log.id} className="p-4 hover:bg-zinc-50 transition-colors flex items-center justify-between">
                     <div>
                       <p className="text-sm font-bold text-zinc-900">"{log.raw_prompt}"</p>
-                      <div className="flex gap-1 mt-1">
-                        {log.extracted_needs?.need_types?.map((n: string, j: number) => (
-                          <span key={j} className="text-[10px] font-black text-red-500 uppercase tracking-widest">
-                            {n}
-                          </span>
-                        ))}
-                      </div>
+                      <p className="text-xs text-zinc-400 mt-1">Results: {log.results_count || 0}</p>
                     </div>
                     <p className="text-xs text-zinc-400">{format(new Date(log.created_at), 'MMM d, HH:mm')}</p>
                   </div>
                 ))}
-                {logs.filter(l => l.results_count === 0).length === 0 && (
+                {zeroResultLogs.length === 0 && (
                   <div className="p-12 text-center">
-                    <p className="text-sm text-zinc-400 italic">No coverage gaps identified. All recent searches returned results.</p>
+                    <p className="text-sm text-zinc-400 italic">No coverage gaps identified in recent search history.</p>
                   </div>
                 )}
               </div>
@@ -785,132 +767,59 @@ function SearchAnalyticsDashboard() {
     </div>
   );
 }
-
 function FeedbackModeration() {
-  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   useEffect(() => {
-    fetchFeedbacks();
-  }, [activeTab]);
+    const loadSummary = async () => {
+      setLoading(true);
+      try {
+        setSummary(await fetchAdminSummary());
+      } catch (err) {
+        console.error('Error fetching feedback summary:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const fetchFeedbacks = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('resource_feedback')
-      .select('*, resources(name)')
-      .eq('status', activeTab)
-      .order('created_at', { ascending: false });
-    
-    if (!error) setFeedbacks(data || []);
-    setLoading(false);
-  };
+    loadSummary();
+  }, []);
 
-  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
-    const { error } = await supabase
-      .from('resource_feedback')
-      .update({ status })
-      .eq('id', id);
-    
-    if (!error) fetchFeedbacks();
-  };
+  if (loading) {
+    return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>;
+  }
+
+  if (!summary?.feedback.configured) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Feedback Intelligence</h2>
+          <p className="text-sm text-zinc-500">This section becomes active once the feedback moderation table is set up.</p>
+        </div>
+        <div className="bg-zinc-50 border border-zinc-200 rounded-3xl p-10 text-center">
+          <MessageSquare className="w-10 h-10 text-zinc-300 mx-auto mb-4" />
+          <p className="text-base font-bold text-zinc-900">Feedback moderation is not configured yet.</p>
+          <p className="text-sm text-zinc-500 mt-2 max-w-2xl mx-auto">Right now the live database does not have the feedback table this view expects, so there is nothing truthful to moderate here yet.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Feedback Intelligence</h2>
-          <p className="text-sm text-zinc-500">Moderate and extract quality signals from community feedback.</p>
-        </div>
-        <div className="flex gap-2 p-1 bg-zinc-100 rounded-xl">
-          {(['pending', 'approved', 'rejected'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setActiveTab(s)}
-              className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all ${
-                activeTab === s 
-                  ? 'bg-white text-zinc-900 shadow-sm' 
-                  : 'text-zinc-500 hover:text-zinc-700'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+      <div>
+        <h2 className="text-xl font-black text-zinc-900 tracking-tight">Feedback Intelligence</h2>
+        <p className="text-sm text-zinc-500">Moderation is configured. Pending queue: {summary.feedback.pending} of {summary.feedback.total}.</p>
       </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>
-        ) : feedbacks.map((f) => (
-          <div key={f.id} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center font-black text-zinc-400">
-                  {f.guest_name?.[0] || 'A'}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-black text-zinc-900">{f.guest_name || 'Anonymous'}</p>
-                    <span className="text-zinc-300">•</span>
-                    <p className="text-sm font-bold text-emerald-600">{f.resources?.name}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className={`w-3 h-3 ${s <= f.rating_overall ? 'text-amber-400 fill-amber-400' : 'text-zinc-200'}`} />
-                      ))}
-                    </div>
-                    <span className="text-xs text-zinc-400">{format(new Date(f.created_at), 'MMM d, yyyy')}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {f.status === 'pending' && (
-                  <>
-                    <button
-                      onClick={() => handleUpdateStatus(f.id, 'rejected')}
-                      className="p-2 rounded-xl border border-zinc-200 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                      title="Reject"
-                    >
-                      <ThumbsDown className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleUpdateStatus(f.id, 'approved')}
-                      className="p-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
-                      title="Approve"
-                    >
-                      <ThumbsUp className="w-5 h-5" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-zinc-50 rounded-xl p-4 mb-4">
-              <p className="text-zinc-700 leading-relaxed italic text-sm">"{f.review_text}"</p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <SignalBadge label="Accessibility" value={f.rating_accessibility} />
-              <SignalBadge label="Staff Experience" value={f.rating_staff} />
-              <SignalBadge label="Usefulness" value={f.rating_usefulness} />
-              <SignalBadge label="Confidence" value="High" />
-            </div>
-          </div>
-        ))}
-        {!loading && feedbacks.length === 0 && (
-          <div className="text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
-            <Star className="w-10 h-10 text-zinc-300 mx-auto mb-3" />
-            <p className="text-zinc-500 font-medium">No feedback submissions in this queue.</p>
-          </div>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard title="Total Feedback" value={summary.feedback.total} icon={<MessageSquare className="w-5 h-5" />} color="zinc" />
+        <StatCard title="Pending Review" value={summary.feedback.pending} icon={<Clock className="w-5 h-5" />} color="amber" />
+        <StatCard title="Moderation Ready" value="Yes" icon={<CheckCircle2 className="w-5 h-5" />} color="emerald" />
       </div>
     </div>
   );
 }
-
 function SignalBadge({ label, value }: { label: string, value: number | string }) {
   return (
     <div className="bg-white border border-zinc-100 rounded-lg p-2">
@@ -947,13 +856,25 @@ function ResourcesManager() {
 
   const fetchResources = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('resources')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (!error) setResources(data || []);
-    setLoading(false);
+    try {
+      const response = await fetch('/api/resources');
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch resources');
+      }
+
+      const sorted = [...(data || [])].sort((a: Resource, b: Resource) => {
+        const left = Date.parse(b.updated_at || b.created_at || '') || 0;
+        const right = Date.parse(a.updated_at || a.created_at || '') || 0;
+        return left - right;
+      });
+      setResources(sorted);
+    } catch (error) {
+      console.error('Error fetching resources:', error);
+      setResources([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filtered = resources.filter(r => {
@@ -1138,587 +1059,154 @@ function ResourcesManager() {
 }
 
 function ReportsQueue() {
-  const [reports, setReports] = useState<Report[]>([]);
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<ReportStatus | 'all'>('all');
-  const [activeIssueType, setActiveIssueType] = useState<string | 'all'>('all');
 
   useEffect(() => {
-    fetchReports();
+    const loadSummary = async () => {
+      setLoading(true);
+      try {
+        setSummary(await fetchAdminSummary());
+      } catch (err) {
+        console.error('Error fetching reports summary:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSummary();
   }, []);
 
-  const fetchReports = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('reports')
-      .select('*, resource:resources(*)')
-      .order('submitted_at', { ascending: false });
-    
-    if (!error) setReports(data || []);
-    setLoading(false);
-  };
+  if (loading) {
+    return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>;
+  }
 
-  const issueTypes = Array.from(new Set(reports.map(r => r.issue_type)));
-
-  const filtered = reports.filter(r => {
-    const statusMatch = filter === 'all' || r.report_status === filter;
-    const typeMatch = activeIssueType === 'all' || r.issue_type === activeIssueType;
-    return statusMatch && typeMatch;
-  });
-
-  const updateReport = async (id: string, updates: Partial<Report>) => {
-    const { error } = await supabase
-      .from('reports')
-      .update(updates)
-      .eq('id', id);
-    
-    if (!error) fetchReports();
-  };
-
-  const resolveReport = async (report: Report, notes: string) => {
-    await updateReport(report.id, {
-      report_status: 'resolved',
-      resolution_notes: notes,
-      resolved_at: new Date().toISOString()
-    });
-  };
+  const issues = [
+    summary?.categories.total === 0 ? {
+      id: 'categories-missing',
+      title: 'Managed categories table is empty',
+      detail: 'The categories page is currently deriving labels from resources because no category records exist in the database.',
+      severity: 'warning'
+    } : null,
+    (summary?.resources.needsVerification || 0) > 0 ? {
+      id: 'resources-needs-verification',
+      title: 'Resources need verification',
+      detail: `${summary?.resources.needsVerification} resources are still marked as needs verification.`,
+      severity: 'warning'
+    } : null,
+    (summary?.meetings.unlinked || 0) > 0 ? {
+      id: 'meetings-unlinked',
+      title: 'Meetings are not linked to resources',
+      detail: `${summary?.meetings.unlinked} meetings do not currently map to a verified organization slug.`,
+      severity: 'warning'
+    } : null,
+    ...(summary?.errorEvents.recent || []).slice(0, 6).map((event: any) => ({
+      id: `error-${event.id}`,
+      title: event.route || event.endpoint || 'System event',
+      detail: event.message,
+      severity: event.severity === 'critical' || event.severity === 'error' ? 'error' : 'warning'
+    }))
+  ].filter(Boolean) as Array<{ id: string; title: string; detail: string; severity: 'warning' | 'error' }>;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-zinc-900 tracking-tight">Resolution Center</h2>
-          <p className="text-sm text-zinc-500">Manage and resolve community-reported data issues.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <div className="flex gap-1 p-1 bg-zinc-100 rounded-xl">
-            {(['all', 'open', 'in_review', 'resolved'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setFilter(s)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all ${
-                  filter === s 
-                    ? 'bg-white text-zinc-900 shadow-sm' 
-                    : 'text-zinc-500 hover:text-zinc-700'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          <select
-            value={activeIssueType}
-            onChange={(e) => setActiveIssueType(e.target.value)}
-            className="px-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-zinc-900"
-          >
-            <option value="all">All Issue Types</option>
-            {issueTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
+      <div>
+        <h2 className="text-xl font-black text-zinc-900 tracking-tight">Reports & Issues</h2>
+        <p className="text-sm text-zinc-500">This view now surfaces real data quality issues from the live system, not just user-submitted reports.</p>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {filtered.map((report) => (
-            <div key={report.id} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm hover:border-zinc-300 transition-all">
-              <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    report.report_status === 'open' ? 'bg-red-50 text-red-600' :
-                    report.report_status === 'in_review' ? 'bg-blue-50 text-blue-600' :
-                    'bg-emerald-50 text-emerald-600'
-                  }`}>
-                    <AlertCircle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{report.issue_type}</p>
-                      <ReportStatusBadge status={report.report_status} />
-                    </div>
-                    <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest mt-0.5">
-                      Submitted {format(new Date(report.submitted_at), 'MMM d, yyyy HH:mm')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {report.report_status !== 'resolved' && (
-                    <button
-                      onClick={() => {
-                        const notes = prompt('Resolution notes:');
-                        if (notes !== null) resolveReport(report, notes);
-                      }}
-                      className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
-                    >
-                      Resolve Issue
-                    </button>
-                  )}
-                  {report.report_status === 'open' && (
-                    <button
-                      onClick={() => updateReport(report.id, { report_status: 'in_review' })}
-                      className="px-4 py-2 bg-zinc-100 text-zinc-900 text-xs font-bold rounded-xl hover:bg-zinc-200 transition-all"
-                    >
-                      Start Review
-                    </button>
-                  )}
-                  <button
-                    onClick={() => updateReport(report.id, { report_status: 'duplicate' })}
-                    className="px-4 py-2 border border-zinc-200 text-zinc-500 text-xs font-bold rounded-xl hover:bg-zinc-50 transition-all"
-                  >
-                    Duplicate
-                  </button>
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard title="User Reports" value={summary?.reports.total || 0} icon={<ShieldAlert className="w-5 h-5" />} color="zinc" />
+        <StatCard title="Open Reports" value={summary?.reports.open || 0} icon={<AlertCircle className="w-5 h-5" />} color="red" />
+        <StatCard title="Needs Verification" value={summary?.resources.needsVerification || 0} icon={<BookOpen className="w-5 h-5" />} color="amber" />
+        <StatCard title="Recent Errors" value={summary?.errorEvents.recent.length || 0} icon={<Activity className="w-5 h-5" />} color="red" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {issues.map((issue) => (
+          <div key={issue.id} className={`bg-white border rounded-2xl p-6 shadow-sm ${issue.severity === 'error' ? 'border-red-200' : 'border-amber-200'}`}>
+            <div className="flex items-start gap-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${issue.severity === 'error' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                <AlertTriangle className="w-5 h-5" />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Report Context</h4>
-                    <p className="text-sm text-zinc-700 leading-relaxed bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                      {report.comment || 'No detailed comment provided.'}
-                    </p>
-                  </div>
-                  
-                  {report.optional_contact && (
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
-                      <Users className="w-3 h-3" />
-                      Contact: <span className="font-bold text-zinc-900">{report.optional_contact}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-zinc-900 rounded-2xl p-5 text-white">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Linked Resource</h4>
-                    <a 
-                      href={`/resource/${report.resource_id}`} 
-                      target="_blank" 
-                      className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase tracking-widest flex items-center gap-1"
-                    >
-                      Inspect <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                  {report.resource ? (
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm font-bold text-white">{report.resource.name}</p>
-                        <p className="text-xs text-zinc-400 mt-1">{report.resource.address}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <StatusBadge status={report.resource.status} />
-                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-                          ID: {report.resource_id.slice(0, 8)}...
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-zinc-500 italic">Resource record missing or deleted.</p>
-                  )}
-                </div>
+              <div>
+                <p className="text-sm font-black text-zinc-900 uppercase tracking-wide">{issue.title}</p>
+                <p className="text-sm text-zinc-600 mt-1">{issue.detail}</p>
               </div>
-
-              {report.resolution_notes && (
-                <div className="mt-6 pt-6 border-t border-zinc-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Resolution Summary</h4>
-                  </div>
-                  <p className="text-sm text-zinc-700 font-medium">{report.resolution_notes}</p>
-                  {report.resolved_at && (
-                    <p className="text-[10px] text-zinc-400 mt-2 font-bold uppercase tracking-widest">
-                      Resolved {format(new Date(report.resolved_at), 'MMM d, yyyy HH:mm')}
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
-          ))}
-          {filtered.length === 0 && (
-            <div className="py-20 text-center bg-white border border-zinc-200 rounded-2xl border-dashed">
-              <p className="text-sm text-zinc-400 italic">No reports found matching your criteria.</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CategoriesManager() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newName, setNewName] = useState('');
-  const [newParentId, setNewParentId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editParentId, setEditParentId] = useState<string | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    setLoading(true);
-    try {
-      // Fetch categories and resource counts
-      const [catRes, countRes] = await Promise.all([
-        supabase
-          .from('categories')
-          .select('*')
-          .order('display_order', { ascending: true })
-          .order('name'),
-        supabase
-          .from('resources')
-          .select('category, subcategory')
-      ]);
-      
-      let data = catRes.data;
-      let error = catRes.error;
-      
-      if (error) {
-        console.warn('display_order fetch failed, trying sequence:', error.message);
-        const seqFallback = await supabase
-          .from('categories')
-          .select('*')
-          .order('sequence', { ascending: true })
-          .order('name');
-        data = seqFallback.data;
-        error = seqFallback.error;
-      }
-
-      if (error) {
-        const fallback = await supabase
-          .from('categories')
-          .select('*')
-          .order('name');
-        data = fallback.data;
-        error = fallback.error;
-      }
-      
-      if (error) {
-        console.error('Error fetching categories:', error);
-      } else if (data) {
-        // Calculate counts
-        const counts: Record<string, number> = {};
-        countRes.data?.forEach((r: any) => {
-          counts[r.category] = (counts[r.category] || 0) + 1;
-          if (r.subcategory) {
-            const key = `${r.category}:${r.subcategory}`;
-            counts[key] = (counts[key] || 0) + 1;
-          }
-        });
-
-        const mappedData = data.map(c => {
-          const isPrimary = !c.parent_id;
-          let count = 0;
-          if (isPrimary) {
-            count = counts[c.name] || 0;
-          } else {
-            const parent = data?.find(p => p.id === c.parent_id);
-            if (parent) {
-              count = counts[`${parent.name}:${c.name}`] || 0;
-            }
-          }
-
-          return {
-            ...c,
-            display_order: c.display_order ?? (c as any).sequence ?? 0,
-            is_active: c.is_active ?? true,
-            resource_count: count
-          };
-        });
-        setCategories(mappedData);
-      }
-    } catch (err) {
-      console.error('Unexpected error in fetchCategories:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
-    
-    // Calculate next display order
-    const sameLevel = categories.filter(c => c.parent_id === (newParentId || null));
-    const nextOrder = sameLevel.length > 0 ? Math.max(...sameLevel.map(c => c.display_order)) + 1 : 0;
-
-    const { error } = await supabase
-      .from('categories')
-      .insert({ 
-        name: newName.trim(),
-        parent_id: newParentId || null,
-        display_order: nextOrder,
-        is_active: true
-      });
-    
-    if (!error) {
-      setNewName('');
-      setNewParentId(null);
-      fetchCategories();
-    } else {
-      // Try sequence if display_order fails
-      const { error: seqError } = await supabase
-        .from('categories')
-        .insert({ 
-          name: newName.trim(),
-          parent_id: newParentId || null,
-          sequence: nextOrder
-        });
-      
-      if (!seqError) {
-        setNewName('');
-        setNewParentId(null);
-        fetchCategories();
-      } else {
-        alert('Error adding category: ' + (error?.message || seqError?.message));
-      }
-    }
-  };
-
-  const handleUpdate = async (id: string) => {
-    if (!editName.trim()) return;
-    
-    const { error } = await supabase
-      .from('categories')
-      .update({ 
-        name: editName.trim(),
-        parent_id: editParentId || null
-      })
-      .eq('id', id);
-    
-    if (!error) {
-      setEditingId(null);
-      fetchCategories();
-    } else {
-      alert('Error updating category: ' + error.message);
-    }
-  };
-
-  const toggleActive = async (cat: Category) => {
-    const { error } = await supabase
-      .from('categories')
-      .update({ is_active: !cat.is_active })
-      .eq('id', cat.id);
-    
-    if (!error) {
-      fetchCategories();
-    } else {
-      alert('Error toggling status: ' + error.message);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure? This will permanently remove the category.')) {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id);
-      
-      if (!error) fetchCategories();
-      else alert('Error deleting category: ' + error.message);
-    }
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    const activeCat = categories.find(c => c.id === activeId);
-    const overCat = categories.find(c => c.id === overId);
-
-    if (!activeCat || !overCat || activeCat.parent_id !== overCat.parent_id) return;
-
-    const sameLevel = categories.filter(c => c.parent_id === activeCat.parent_id);
-    const oldIndex = sameLevel.findIndex(c => c.id === activeId);
-    const newIndex = sameLevel.findIndex(c => c.id === overId);
-
-    const newOrder = arrayMove(sameLevel, oldIndex, newIndex);
-    
-    // Optimistic update
-    const updatedCategories = categories.map(c => {
-      const found = newOrder.find((no: Category) => no.id === c.id);
-      if (found) {
-        return { ...c, display_order: newOrder.indexOf(found) };
-      }
-      return c;
-    });
-    setCategories(updatedCategories);
-
-    // Persist to DB
-    try {
-      const updates = newOrder.map((cat: Category, index: number) => ({
-        id: cat.id,
-        display_order: index,
-        name: cat.name, 
-        parent_id: cat.parent_id
-      }));
-
-      for (const update of updates) {
-        await supabase
-          .from('categories')
-          .update({ display_order: update.display_order })
-          .eq('id', update.id);
-      }
-    } catch (err) {
-      console.error('Error persisting drag order:', err);
-      fetchCategories(); // Revert on error
-    }
-  };
-
-  const primaryCategories = categories.filter(c => !c.parent_id).sort((a, b) => a.display_order - b.display_order);
-
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-      <div className="xl:col-span-2 space-y-8">
-        <div>
-          <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Category Management</h2>
-          <p className="text-sm text-zinc-500">Organize resources into a simple two-level hierarchy.</p>
-        </div>
-
-        {/* Add Category Form */}
-        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-          <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Category Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Technology"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm font-medium"
-              />
-            </div>
-            <div className="w-64">
-              <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 ml-1">Parent (Optional)</label>
-              <select
-                value={newParentId || ''}
-                onChange={(e) => setNewParentId(e.target.value || null)}
-                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-zinc-900 outline-none text-sm bg-white font-medium"
-              >
-                <option value="">Primary Category</option>
-                {primaryCategories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="submit"
-              disabled={!newName.trim()}
-              className="px-8 py-2.5 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Category
-            </button>
-          </form>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-10 h-10 animate-spin text-zinc-200" />
           </div>
-        ) : (
-          <DndContext 
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="space-y-6">
-              <SortableContext 
-                items={primaryCategories.map(c => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {primaryCategories.map(cat => (
-                  <SortableCategoryItem 
-                    key={cat.id} 
-                    category={cat} 
-                    allCategories={categories}
-                    onEdit={(id, name, parentId) => {
-                      setEditingId(id);
-                      setEditName(name);
-                      setEditParentId(parentId);
-                    }}
-                    onDelete={handleDelete}
-                    onToggleActive={toggleActive}
-                    isEditing={editingId === cat.id}
-                    editName={editName}
-                    setEditName={setEditName}
-                    editParentId={editParentId}
-                    setEditParentId={setEditParentId}
-                    onSave={() => handleUpdate(cat.id)}
-                    onCancel={() => setEditingId(null)}
-                    onDragEnd={handleDragEnd}
-                  />
-                ))}
-              </SortableContext>
-            </div>
-          </DndContext>
+        ))}
+        {issues.length === 0 && (
+          <div className="py-20 text-center bg-white border border-zinc-200 rounded-2xl border-dashed">
+            <p className="text-sm text-zinc-400 italic">No active data issues are being surfaced right now.</p>
+          </div>
         )}
       </div>
+    </div>
+  );
+}
+function CategoriesManager() {
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
+  const [loading, setLoading] = useState(true);
 
-      {/* Preview Panel */}
-      <div className="space-y-6">
-        <div className="sticky top-24">
-          <div className="bg-zinc-900 rounded-3xl p-6 text-white shadow-xl shadow-zinc-200">
-            <div className="flex items-center gap-2 mb-6">
-              <Eye className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Display Preview</h3>
+  useEffect(() => {
+    const loadSummary = async () => {
+      setLoading(true);
+      try {
+        setSummary(await fetchAdminSummary());
+      } catch (err) {
+        console.error('Error fetching category summary:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSummary();
+  }, []);
+
+  if (loading) {
+    return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>;
+  }
+
+  const derivedCategories = summary?.resources.derivedCategories || [];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Category Directory</h2>
+        <p className="text-sm text-zinc-500">This page reflects the categories actually present in the resource database.</p>
+      </div>
+
+      {summary?.categories.total === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+          <p className="text-sm font-bold text-amber-900">The managed `categories` table is empty.</p>
+          <p className="text-sm text-amber-800 mt-1">For now, the admin dashboard is deriving categories directly from resource records so you can still see what the site is using.</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {derivedCategories.map((category) => (
+          <div key={category.name} className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-black text-zinc-900">{category.name}</h3>
+              <span className="px-2 py-1 rounded-full bg-zinc-100 text-zinc-600 text-xs font-black uppercase tracking-widest">{category.total}</span>
             </div>
-            
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-              {primaryCategories.filter(c => c.is_active).map(cat => (
-                <div key={cat.id} className="space-y-2">
-                  <div className="flex items-center justify-between group">
-                    <p className="text-sm font-bold text-zinc-100">{cat.name}</p>
-                    <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{cat.resource_count}</span>
-                  </div>
-                  <div className="pl-4 space-y-1 border-l border-zinc-800">
-                    {categories
-                      .filter(c => c.parent_id === cat.id && c.is_active)
-                      .sort((a, b) => a.display_order - b.display_order)
-                      .map(sub => (
-                        <div key={sub.id} className="flex items-center justify-between">
-                          <p className="text-xs text-zinc-400">{sub.name}</p>
-                          <span className="text-[9px] font-bold text-zinc-700">{sub.resource_count}</span>
-                        </div>
-                      ))}
-                  </div>
+            <div className="space-y-2">
+              {category.subcategories.length > 0 ? category.subcategories.map((subcategory) => (
+                <div key={subcategory.name} className="flex items-center justify-between text-sm border-b border-zinc-100 pb-2 last:border-0 last:pb-0">
+                  <span className="text-zinc-600">{subcategory.name}</span>
+                  <span className="text-zinc-400 font-bold">{subcategory.total}</span>
                 </div>
-              ))}
-              {primaryCategories.filter(c => c.is_active).length === 0 && (
-                <p className="text-xs text-zinc-500 italic text-center py-8">No active categories to preview.</p>
+              )) : (
+                <p className="text-sm text-zinc-400 italic">No subcategories recorded for this category.</p>
               )}
             </div>
           </div>
-
-          <div className="mt-6 bg-white border border-zinc-200 rounded-2xl p-6">
-            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Admin Tip</h3>
-            <p className="text-xs text-zinc-500 leading-relaxed">
-              Drag categories to reorder them. This order is exactly how they will appear in the main directory search filters.
-            </p>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
-
 function SortableCategoryItem({ 
   category, 
   allCategories, 
@@ -1971,19 +1459,41 @@ function ResourceForm({ resource, onClose, onSave }: { resource: Resource | null
         data = fallback.data;
       }
 
-      if (data) {
-        if (data.length === 0) {
-          setCategories([]);
-        } else {
-          const roots = data.filter(c => !c.parent_id);
-          const hierarchical: Category[] = [];
-          roots.forEach(root => {
-            hierarchical.push(root);
-            const children = data.filter(c => c.parent_id === root.id);
-            hierarchical.push(...children);
-          });
-          setCategories(hierarchical.length > 0 ? hierarchical : data);
-        }
+      if (data && data.length > 0) {
+        const roots = data.filter(c => !c.parent_id);
+        const hierarchical: Category[] = [];
+        roots.forEach(root => {
+          hierarchical.push(root);
+          const children = data.filter(c => c.parent_id === root.id);
+          hierarchical.push(...children);
+        });
+        setCategories(hierarchical.length > 0 ? hierarchical : data);
+      } else {
+        const summary = await fetchAdminSummary();
+        const derived = summary.resources.derivedCategories.flatMap((category, categoryIndex) => {
+          const parentId = `derived-${categoryIndex}`;
+          const parent: Category = {
+            id: parentId,
+            name: category.name,
+            parent_id: null,
+            display_order: categoryIndex,
+            is_active: true,
+            created_at: ''
+          };
+
+          const children = category.subcategories.map((subcategory, subcategoryIndex) => ({
+            id: `${parentId}-${subcategoryIndex}`,
+            name: subcategory.name,
+            parent_id: parentId,
+            display_order: subcategoryIndex,
+            is_active: true,
+            created_at: ''
+          }));
+
+          return [parent, ...children];
+        });
+
+        setCategories(derived);
       }
     } catch (err) {
       console.error('Error in ResourceForm fetchCategories:', err);
@@ -2897,3 +2407,6 @@ function HomepageSettingsManager() {
     </div>
   );
 }
+
+
+
