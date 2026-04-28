@@ -33,6 +33,12 @@ export interface HomepageSettings {
   }[];
 }
 
+export interface HomepageStats {
+  resources: number;
+  meetings: number;
+  events: number;
+}
+
 export interface Resource {
   id: string;
   name: string;

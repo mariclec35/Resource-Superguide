@@ -8,3 +8,11 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+interface Window {
+  __INITIAL_HOMEPAGE_STATS__?: {
+    resources: number
+    meetings: number
+    events: number
+  }
+}

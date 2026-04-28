@@ -1161,8 +1161,10 @@ app.get("/api/categories", async (req, res) => {
 });
 
 // Public: Get homepage stats
-app.get("/api/homepage-stats", async (_req, res) => {
+app.get("/api/stats/homepage", async (_req, res) => {
   try {
+    const nowIso = new Date().toISOString();
+
     const [resourcesResult, meetingsResult, eventsResult] = await Promise.all([
       supabase
         .from("resources")
@@ -1174,12 +1176,20 @@ app.get("/api/homepage-stats", async (_req, res) => {
       supabase
         .from("events")
         .select("*", { count: "exact", head: true })
-        .eq("status", "published"),
+        .eq("status", "published")
+        .gte("start_datetime", nowIso),
     ]);
 
     if (resourcesResult.error) throw resourcesResult.error;
     if (meetingsResult.error) throw meetingsResult.error;
     if (eventsResult.error) throw eventsResult.error;
+
+    res.set({
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Surrogate-Control": "no-store",
+    });
 
     res.status(200).json({
       resources: resourcesResult.count || 0,

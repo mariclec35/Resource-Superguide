@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Resource, Category, HomepageSettings } from '../types';
+import { Resource, Category, HomepageSettings, HomepageStats } from '../types';
 import ResourceCard from '../components/ResourceCard';
 import StatRibbon from '../components/StatRibbon';
 import { Search, Loader2, Sparkles, ArrowRight, Info, LayoutGrid, MapPin, Moon, Users, Utensils, Briefcase, Car, Heart, Shield, Home as HomeIcon, Phone, HelpCircle } from 'lucide-react';
@@ -66,21 +66,17 @@ function getResourceSearchFields(resource: Resource) {
     .toLowerCase();
 }
 
-type HomepageStats = {
-  resources: number;
-  meetings: number;
-  events: number;
-};
-
 export default function Home() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [dbCategories, setDbCategories] = useState<Category[]>([]);
   const [homepageSettings, setHomepageSettings] = useState<HomepageSettings | null>(null);
-  const [homepageStats, setHomepageStats] = useState<HomepageStats>({
-    resources: 0,
-    meetings: 0,
-    events: 0,
-  });
+  const [homepageStats, setHomepageStats] = useState<HomepageStats>(
+    window.__INITIAL_HOMEPAGE_STATS__ || {
+      resources: 0,
+      meetings: 0,
+      events: 0,
+    }
+  );
   const [loading, setLoading] = useState(true);
   
   // Search State
@@ -100,7 +96,12 @@ export default function Home() {
 
   const fetchHomepageStats = async () => {
     try {
-      const response = await fetch('/api/homepage-stats');
+      const response = await fetch(`/api/stats/homepage?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch homepage stats');
       }
@@ -131,6 +132,26 @@ export default function Home() {
     }, 30000);
 
     return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchHomepageStats();
+      }
+    };
+
+    const handleFocusRefresh = () => {
+      void fetchHomepageStats();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityRefresh);
+    window.addEventListener('focus', handleFocusRefresh);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityRefresh);
+      window.removeEventListener('focus', handleFocusRefresh);
+    };
   }, []);
 
   const fetchData = async () => {
