@@ -19,6 +19,7 @@ export interface Category {
   name: string;
   parent_id?: string | null;
   display_order: number;
+  sequence?: number;
   is_active: boolean;
   created_at: string;
 }

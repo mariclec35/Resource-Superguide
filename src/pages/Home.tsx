@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Resource, Category, HomepageSettings, HomepageStats } from '../types';
 import ResourceCard from '../components/ResourceCard';
 import StatRibbon from '../components/StatRibbon';
@@ -66,7 +67,45 @@ function getResourceSearchFields(resource: Resource) {
     .toLowerCase();
 }
 
+function matchesBrowseCategory(resource: Resource, category: string) {
+  if (!category) return true;
+  if (category === 'Category not assigned') return !resource.category;
+
+  const normalizedCategory = category.toLowerCase();
+
+  return (
+    (resource.category || '').toLowerCase().includes(normalizedCategory) ||
+    (resource.subcategory || '').toLowerCase().includes(normalizedCategory) ||
+    (resource.metadata?.pathway_tags || []).some(tag => tag.toLowerCase().includes(normalizedCategory))
+  );
+}
+
+function matchesBrowseLocation(resource: Resource, location: string) {
+  if (!location) return true;
+
+  const normalizedLocation = location.toLowerCase();
+
+  return (
+    (resource.city || '').toLowerCase().includes(normalizedLocation) ||
+    (resource.address || '').toLowerCase().includes(normalizedLocation) ||
+    (resource.locations || []).some(resourceLocation =>
+      [
+        resourceLocation.label,
+        resourceLocation.address,
+        resourceLocation.city,
+        resourceLocation.state,
+        resourceLocation.zip,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedLocation)
+    )
+  );
+}
+
 export default function Home() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [resources, setResources] = useState<Resource[]>([]);
   const [dbCategories, setDbCategories] = useState<Category[]>([]);
   const [homepageSettings, setHomepageSettings] = useState<HomepageSettings | null>(null);
@@ -93,6 +132,62 @@ export default function Home() {
   const [browseCategory, setBrowseCategory] = useState<string>('');
   const [browseLocation, setBrowseLocation] = useState<string>('');
   const [sortBy, setSortBy] = useState('relevance');
+
+  const getBrowseResults = (category: string, location: string) =>
+    resources
+      .filter(resource => matchesBrowseCategory(resource, category))
+      .filter(resource => matchesBrowseLocation(resource, location))
+      .map(resource => ({
+        ...resource,
+        matchScore: category && matchesBrowseCategory(resource, category) ? 2 : 1,
+        matchReasons: category ? [`Listed under ${category}`] : [],
+      }));
+
+  const buildBrowseUrl = (category: string) => {
+    const params = new URLSearchParams();
+    params.set('mode', 'browse');
+    if (category) params.set('category', category);
+    if (browseLocation.trim()) params.set('location', browseLocation.trim());
+
+    return {
+      pathname: '/',
+      search: `?${params.toString()}`,
+      hash: 'search-module',
+    };
+  };
+
+  const categoryStats = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    resources.forEach(resource => {
+      const category = resource.category || 'Category not assigned';
+      counts.set(category, (counts.get(category) || 0) + 1);
+    });
+
+    return counts;
+  }, [resources]);
+
+  const browseCategories = useMemo(() => {
+    if (dbCategories.length > 0) {
+      return dbCategories.map(category => ({
+        id: category.id,
+        name: category.name,
+        count: resources.filter(resource => matchesBrowseCategory(resource, category.name)).length,
+      }));
+    }
+
+    return Array.from(categoryStats.entries())
+      .map(([name, count]) => ({
+        id: name,
+        name,
+        count,
+      }))
+      .sort((a, b) => {
+        if (a.name === 'Category not assigned') return 1;
+        if (b.name === 'Category not assigned') return -1;
+        return a.name.localeCompare(b.name);
+      });
+  }, [categoryStats, dbCategories, resources]);
 
   const fetchHomepageStats = async () => {
     try {
@@ -125,6 +220,23 @@ export default function Home() {
       localStorage.setItem('session_id', Math.random().toString(36).substring(2, 15));
     }
   }, []);
+
+  useEffect(() => {
+    if (loading || resources.length === 0) return;
+
+    const mode = searchParams.get('mode');
+    const category = searchParams.get('category') || '';
+    const location = searchParams.get('location') || '';
+
+    if (mode === 'browse' || category || location) {
+      setSearchMode('browse');
+      setBrowseCategory(category);
+      setBrowseLocation(location);
+      setAiExtraction(null);
+      setHasSearched(true);
+      setFilteredResources(getBrowseResults(category, location));
+    }
+  }, [loading, resources, searchParams]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -289,29 +401,15 @@ export default function Home() {
     setIsSearching(true);
     setHasSearched(true);
     setAiExtraction(null); // Clear AI summary
+
+    const params = new URLSearchParams();
+    params.set('mode', 'browse');
+    if (browseCategory) params.set('category', browseCategory);
+    if (browseLocation.trim()) params.set('location', browseLocation.trim());
+    setSearchParams(params);
     
     setTimeout(() => {
-      let matched = resources.map(r => ({ ...r, matchScore: 1, matchReasons: [] }));
-      
-      if (browseCategory) {
-        if (browseCategory === 'Category not assigned') {
-          matched = matched.filter(r => !r.category);
-        } else {
-          matched = matched.filter(r => 
-            (r.category || '').toLowerCase().includes(browseCategory.toLowerCase()) || 
-            (r.subcategory || '').toLowerCase().includes(browseCategory.toLowerCase()) ||
-            (r.metadata?.pathway_tags || []).some(tag => tag.toLowerCase().includes(browseCategory.toLowerCase()))
-          );
-        }
-      }
-      
-      if (browseLocation) {
-        matched = matched.filter(r => 
-          (r.city || '').toLowerCase().includes(browseLocation.toLowerCase()) ||
-          (r.address || '').toLowerCase().includes(browseLocation.toLowerCase())
-        );
-      }
-      
+      const matched = getBrowseResults(browseCategory, browseLocation);
       setFilteredResources(matched);
       setIsSearching(false);
     }, 400); // Simulate network delay for smooth UX
@@ -462,22 +560,52 @@ export default function Home() {
             </form>
           ) : (
             <form onSubmit={handleBrowseSearch}>
-              <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">Primary Category</label>
-              {dbCategories.length === 0 ? (
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-3">
+                <div>
+                  <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest mb-1">Primary Category</label>
+                  <p className="text-sm text-zinc-500">Choose a category to open matching directory results.</p>
+                </div>
+                {(browseCategory || browseLocation) && (
+                  <Link
+                    to={{ pathname: '/', search: '?mode=browse', hash: 'search-module' }}
+                    onClick={() => {
+                      setBrowseCategory('');
+                      setBrowseLocation('');
+                      setFilteredResources(resources);
+                      setHasSearched(true);
+                    }}
+                    className="text-sm font-bold text-zinc-500 hover:text-zinc-900 transition-colors"
+                  >
+                    Clear filters
+                  </Link>
+                )}
+              </div>
+              {browseCategories.length === 0 ? (
                 <div className="p-6 bg-zinc-50 border border-zinc-200 rounded-2xl text-center mb-6">
                   <p className="text-zinc-500 font-medium">Categories coming soon</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-6">
-                  {dbCategories.map(c => (
-                    <button 
+                  {browseCategories.map(c => (
+                    <Link
                       key={c.id}
-                      type="button" 
-                      onClick={() => setBrowseCategory(browseCategory === c.name ? '' : c.name)} 
-                      className={`p-3 rounded-xl border text-sm font-bold text-left transition-all ${browseCategory === c.name ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'}`}
+                      to={buildBrowseUrl(c.name)}
+                      onClick={() => {
+                        setBrowseCategory(c.name);
+                        setSearchMode('browse');
+                        setHasSearched(true);
+                        setFilteredResources(getBrowseResults(c.name, browseLocation));
+                      }}
+                      className={`group min-h-[76px] p-3 rounded-xl border text-sm font-bold text-left transition-all flex flex-col justify-between gap-2 ${browseCategory === c.name ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'}`}
                     >
-                      {c.name}
-                    </button>
+                      <span className="flex items-start justify-between gap-2">
+                        <span>{c.name}</span>
+                        <ArrowRight className={`w-4 h-4 shrink-0 transition-transform ${browseCategory === c.name ? 'text-emerald-600' : 'text-zinc-300 group-hover:text-zinc-500 group-hover:translate-x-0.5'}`} />
+                      </span>
+                      <span className={`text-xs font-bold ${browseCategory === c.name ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                        {c.count} resources
+                      </span>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -586,6 +714,7 @@ export default function Home() {
                     setBrowseLocation('');
                     setSearchMode('browse');
                     setFilteredResources(resources);
+                    setSearchParams({ mode: 'browse' });
                   }}
                   className="mt-6 px-6 py-2.5 bg-white border border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 transition-colors"
                 >
